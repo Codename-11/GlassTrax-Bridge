@@ -157,4 +157,15 @@ Examples:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as e:
+        print("\n" + "=" * 50)
+        print("ERROR: Agent failed to start")
+        print("=" * 50)
+        print(f"\n{type(e).__name__}: {e}\n")
+        import traceback
+        traceback.print_exc()
+        print("\n" + "=" * 50)
+        input("Press Enter to exit...")
+        sys.exit(1)
