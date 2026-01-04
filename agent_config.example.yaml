@@ -1,0 +1,37 @@
+# GlassTrax Agent Configuration
+# Copy this file to agent_config.yaml before first run
+#
+# cp agent_config.example.yaml agent_config.yaml
+#
+# On first run, the agent will generate an API key and update this file.
+
+# Database Connection
+# The agent connects to GlassTrax via ODBC using the configured DSN
+database:
+  # ODBC Data Source Name (configured in Windows ODBC Administrator - 32-bit)
+  dsn: "LIVE"
+
+  # CRITICAL: Always keep this true to prevent any writes to GlassTrax
+  readonly: true
+
+  # Query timeout in seconds
+  timeout: 30
+
+# Agent Settings
+agent:
+  # Port the agent listens on
+  port: 8001
+
+  # API key hash (auto-generated on first run)
+  # Do not edit this manually - the agent generates this automatically
+  # Delete this line and restart agent to generate a new key
+  api_key_hash: ""
+
+  # Tables that can be queried through the agent
+  # Add tables here as needed - this is a security allowlist
+  allowed_tables:
+    - customer
+    - customer_contacts
+    - delivery_routes
+    - sales_orders_headers
+    - sales_order_detail

@@ -1,0 +1,61 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.Python
+*.so
+.eggs
+*.egg-info
+.mypy_cache
+.pytest_cache
+venv
+.venv
+
+# Node
+portal/node_modules
+docs-site/node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs (we rebuild in Docker)
+portal/dist
+docs-site/.vitepress/dist
+docs-site/.vitepress/cache
+
+# Local data
+data/*.db
+*.sqlite
+
+# Windows Python bundle (not needed in container)
+python32/
+
+# Environment files
+.env
+.env.local
+*.local
+
+# Documentation source (only need built output)
+docs/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+tests/
+*.test.ts
+*.spec.ts

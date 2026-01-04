@@ -1,0 +1,16 @@
+{
+  "name": "glasstrax-bridge-docs",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "GlassTrax Bridge API Documentation",
+  "private": true,
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
+    "sync-version": "node -e \"const v=require('fs').readFileSync('../VERSION','utf8').trim();const p=require('./package.json');p.version=v;require('fs').writeFileSync('./package.json',JSON.stringify(p,null,2)+'\\n')\""
+  },
+  "devDependencies": {
+    "vitepress": "^1.5.0"
+  }
+}

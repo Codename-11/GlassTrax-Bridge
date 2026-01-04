@@ -1,0 +1,74 @@
+[project]
+name = "glasstrax-bridge"
+dynamic = ["version"]
+description = "Multi-tenant REST API for read-only access to GlassTrax ERP"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Bailey Dixon" }]
+
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic-settings",
+    "pyodbc",
+    "pyyaml",
+    "ruamel.yaml",
+    "python-dotenv",
+    "sqlalchemy",
+    "aiosqlite",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "python-multipart",
+    "slowapi",
+    "jinja2",
+    "pandas",
+    "click",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+    "httpx",
+    "ruff",
+    "pyright",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["python32", ".venv", "venv", "__pycache__"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default argument (FastAPI Depends)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["api", "utils"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+exclude = ["python32", ".venv", "venv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --cov=api --cov-report=term-missing"

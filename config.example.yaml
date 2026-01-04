@@ -1,0 +1,70 @@
+# GlassTrax Bridge Configuration
+# Copy this file to config.yaml and update with your settings
+#
+# cp config.example.yaml config.yaml
+
+# Database Configuration
+database:
+  # Friendly name shown in the UI (e.g., "TGI Database", "Production DB")
+  friendly_name: "GlassTrax Database"
+
+  # ODBC Data Source Name (DSN)
+  # Configure this DSN in Windows ODBC Data Source Administrator (32-bit)
+  # The DSN contains all connection details (server, driver, protocol, etc.)
+  dsn: "LIVE"
+
+  # Connection Options
+  readonly: true              # Always connect in read-only mode for safety
+  timeout: 30                 # Query timeout in seconds
+
+# Application Settings
+application:
+  # Timezone for logs and timestamps (IANA timezone name)
+  # Examples: America/New_York, America/Los_Angeles, Europe/London, UTC
+  timezone: "America/New_York"
+
+  # Logging Configuration
+  # NOTE: Not yet implemented - currently hardcoded in middleware
+  logging:
+    level: "INFO"             # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    log_to_file: true         # Enable file logging
+    log_to_console: true      # Enable console logging
+
+  # Performance Settings
+  # NOTE: Not yet implemented - placeholders for future use
+  performance:
+    query_timeout: 60        # Query timeout in seconds
+    fetch_size: 1000         # Number of rows to fetch at once
+
+# Feature Flags
+# NOTE: Not yet implemented - these flags have no effect currently
+features:
+  enable_caching: false      # NOT IMPLEMENTED - Query result caching
+  enable_exports: true       # NOT IMPLEMENTED - Data export functionality
+
+# Admin Portal Authentication
+admin:
+  username: "admin"
+  # Password hash - generate with:
+  #   python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+  # Leave commented to use default password 'admin' (CHANGE IN PRODUCTION!)
+  # password_hash: "$2b$12$..."
+
+# GlassTrax Agent Settings
+# Configure connection to Windows-based GlassTrax Agent for database access
+# Required when running in Docker (no direct ODBC access)
+agent:
+  # Enable agent mode
+  # When enabled, the API connects to a Windows agent for database queries
+  enabled: false
+
+  # Agent URL - Full URL of the Windows machine running the GlassTrax Agent
+  # Example: "http://192.168.1.100:8001" or "http://windows-server.local:8001"
+  url: "http://localhost:8001"
+
+  # Agent API Key - Authentication key for the agent
+  # Get this from the agent console output on first run
+  api_key: ""
+
+  # Request timeout in seconds
+  timeout: 30

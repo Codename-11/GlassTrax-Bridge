@@ -1,0 +1,18 @@
+{
+  "name": "glasstrax-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n API,Portal,Docs -c blue,green,magenta \"npm run dev:api\" \"npm run dev:portal\" \"npm run dev:docs\"",
+    "dev:api": "python32\\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir api",
+    "dev:portal": "cd portal && npx vite --port 5173",
+    "dev:docs": "cd docs && npx vitepress dev --port 5174",
+    "build": "npm run build:portal && npm run build:docs",
+    "build:portal": "cd portal && npm run build",
+    "build:docs": "cd docs && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

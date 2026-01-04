@@ -1,0 +1,63 @@
+# GlassTrax-Bridge Dependencies
+
+# ======================
+# Core Database Connectivity
+# ======================
+pyodbc                      # Pervasive SQL ODBC connection
+
+# ======================
+# Configuration Management
+# ======================
+pyyaml                      # YAML config file parsing
+ruamel.yaml                 # YAML with comment preservation (for config editing)
+python-dotenv               # Environment variable loading
+tzdata                      # Timezone data for zoneinfo (required on Windows)
+
+# ======================
+# API Server (FastAPI)
+# ======================
+fastapi                     # Modern async web framework
+uvicorn[standard]           # ASGI server
+pydantic-settings           # Settings management with env support
+
+# ======================
+# Database & ORM (App DB)
+# ======================
+sqlalchemy                  # SQL toolkit and ORM
+alembic                     # Database migrations
+aiosqlite                   # Async SQLite driver
+
+# ======================
+# Authentication & Security
+# ======================
+python-jose[cryptography]   # JWT token handling
+passlib[bcrypt]             # Password and API key hashing
+python-multipart            # Form data parsing (file uploads)
+
+# ======================
+# Rate Limiting
+# ======================
+slowapi                     # Rate limiting for FastAPI
+
+# ======================
+# HTML Generation
+# ======================
+jinja2                      # HTML templating
+
+# ======================
+# Data Manipulation
+# ======================
+pandas                      # Data manipulation (for exports)
+
+# ======================
+# CLI Enhancements
+# ======================
+click                       # CLI framework (future use)
+
+# ======================
+# Development & Testing
+# ======================
+pytest                      # Testing framework
+pytest-cov                  # Test coverage
+pytest-asyncio              # Async test support
+httpx                       # Async HTTP client for agent communication & testing

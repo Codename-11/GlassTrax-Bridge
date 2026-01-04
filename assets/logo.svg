@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" fill="none">
+  <!-- Background -->
+  <rect width="200" height="100" rx="12" fill="#1e1e1e"/>
+
+  <!-- Top bars (left system) -->
+  <rect x="20" y="20" width="50" height="8" rx="1" fill="#ffffff"/>
+  <rect x="20" y="72" width="60" height="8" rx="1" fill="#ffffff"/>
+
+  <!-- Top bars (right system) -->
+  <rect x="130" y="20" width="50" height="8" rx="1" fill="#ffffff"/>
+  <rect x="120" y="72" width="60" height="8" rx="1" fill="#ffffff"/>
+
+  <!-- Bridge dashes (left side) -->
+  <rect x="20" y="46" width="16" height="8" rx="1" fill="#ffffff"/>
+  <rect x="44" y="46" width="16" height="8" rx="1" fill="#ffffff"/>
+  <rect x="68" y="46" width="16" height="8" rx="1" fill="#ffffff"/>
+
+  <!-- Bridge center (active/green) -->
+  <rect x="92" y="46" width="16" height="8" rx="1" fill="#4ade80"/>
+
+  <!-- Bridge dashes (right side) -->
+  <rect x="116" y="46" width="16" height="8" rx="1" fill="#ffffff"/>
+  <rect x="140" y="46" width="16" height="8" rx="1" fill="#ffffff"/>
+  <rect x="164" y="46" width="16" height="8" rx="1" fill="#ffffff"/>
+</svg>
