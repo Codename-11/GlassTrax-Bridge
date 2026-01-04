@@ -42,7 +42,8 @@ export default defineConfig({
           text: 'Deployment',
           items: [
             { text: 'Docker & Windows', link: '/guide/deployment' },
-            { text: 'Agent Setup', link: '/guide/agent-setup' }
+            { text: 'Agent Installer', link: '/guide/agent-installation' },
+            { text: 'Agent Manual Setup', link: '/guide/agent-setup' }
           ]
         }
       ],
@@ -72,7 +73,7 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/your-org/glasstrax-bridge' }
+      { icon: 'github', link: 'https://github.com/Codename-11/GlassTrax-Bridge' }
     ],
 
     footer: {

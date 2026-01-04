@@ -91,6 +91,77 @@ Port 3000: Portal + API with GlassTrax access via agent
 
 Runs minimal agent on port 8001 with ODBC access
 
+### Agent Installer (Standalone EXE)
+
+Download from [Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases) or build locally:
+
+```powershell
+# Build installer (requires Inno Setup 6)
+.\build_agent.ps1
+
+# Or use the batch wrapper
+BUILD_AGENT.bat
+```
+
+The installer includes:
+- 32-bit Python runtime (for Pervasive ODBC)
+- System tray application with start/stop controls
+- Auto-start on Windows boot (optional)
+
+## Building Releases
+
+### Local Agent Build
+
+```powershell
+# Build installer
+.\build_agent.ps1
+
+# Clean build from scratch
+.\build_agent.ps1 -Clean
+
+# Build without compiling installer (for testing)
+.\build_agent.ps1 -SkipInstaller
+```
+
+Output: `dist/GlassTraxAgent-X.X.X-Setup.exe`
+
+### Automated Releases (GitHub Actions)
+
+Push a version tag to trigger the release workflow:
+
+```powershell
+# Update VERSION file
+echo "1.1.0" > VERSION
+
+# Sync versions to package.json files
+cd portal && npm run sync-version
+cd ../docs && npm run sync-version
+
+# Commit and tag
+git add -A
+git commit -m "chore: release v1.1.0"
+git tag v1.1.0
+git push origin main --tags
+```
+
+The workflow (`.github/workflows/release.yml`) will:
+1. Validate VERSION file matches tag
+2. Build Windows Agent installer
+3. Build and push Docker image to ghcr.io
+4. Create GitHub Release with EXE artifact
+
+### Docker Images
+
+Pull from GitHub Container Registry:
+
+```bash
+# Latest
+docker pull ghcr.io/codename-11/glasstrax-bridge:latest
+
+# Specific version
+docker pull ghcr.io/codename-11/glasstrax-bridge:1.1.0
+```
+
 ## Project Structure
 
 ```
@@ -115,10 +186,14 @@ GlassTrax-Bridge/
 │   └── utils/                # Shared utilities (logger)
 ├── agent/                    # GlassTrax Agent (Windows ODBC)
 │   ├── main.py               # Agent FastAPI app
+│   ├── cli.py                # CLI entry point (--tray/--service/--console)
+│   ├── tray_app.py           # System tray application (pystray)
 │   ├── config.py             # Agent configuration
 │   ├── query.py              # ODBC query execution
 │   ├── auth.py               # API key authentication
 │   ├── schemas.py            # Request/response models
+│   ├── icons/                # Tray icons (.ico files)
+│   ├── requirements_agent.txt # Minimal deps for standalone build
 │   ├── run_agent.bat         # Manual startup script
 │   ├── install_service.bat   # NSSM service installation
 │   └── uninstall_service.bat # NSSM service removal
@@ -143,7 +218,14 @@ GlassTrax-Bridge/
 ├── alembic.ini               # Alembic configuration
 ├── docker-compose.yml        # Container orchestration
 ├── run_dev.bat               # Development startup
-└── run_prod.bat              # Production build & run
+├── run_prod.bat              # Production build & run
+├── build_agent.ps1           # Agent installer build script
+├── BUILD_AGENT.bat           # Build wrapper
+├── .github/workflows/        # GitHub Actions
+│   └── release.yml           # Automated release workflow
+├── build/                    # Build output (gitignored)
+├── dist/                     # Installer output (gitignored)
+└── .build_cache/             # Python embed cache (gitignored)
 ```
 
 ## Configuration
@@ -279,3 +361,10 @@ cd portal && npm run lint          # ESLint
 23. **Alembic migrations** - Run `python32\python.exe -m alembic upgrade head` after pulling changes
 24. **Existing databases** - Stamp with `alembic stamp head` before first migration run
 25. **New models** - Import in `api/models/__init__.py` AND `migrations/env.py` for autogenerate
+26. **Agent CLI modes** - `--tray` (default EXE), `--service` (NSSM), `--console` (debug)
+27. **Agent tray icons** - Store in `agent/icons/` as .ico files (64x64), generated via `generate_icons.py`
+28. **Build cache** - `.build_cache/` stores downloaded Python embed (gitignored)
+29. **Inno Setup 6** - Required for building installer, download from jrsoftware.org
+30. **Release workflow** - Push `vX.X.X` tag to trigger build + release on GitHub Actions
+31. **Docker registry** - Images published to `ghcr.io/codename-11/glasstrax-bridge`
+32. **Agent version** - Reads from VERSION file dynamically (not hardcoded)

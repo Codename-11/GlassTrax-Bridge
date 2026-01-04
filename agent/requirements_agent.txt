@@ -1,0 +1,22 @@
+# GlassTrax Agent - Minimal Dependencies
+# These are bundled with the standalone installer
+# For development, use the main requirements.txt
+
+# Core API
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Database (32-bit ODBC)
+pyodbc>=5.0.0
+
+# Configuration
+ruamel.yaml>=0.18.0
+
+# Authentication
+bcrypt>=4.0.0
+
+# System Tray (Windows)
+pystray>=0.19.5
+Pillow>=10.0.0

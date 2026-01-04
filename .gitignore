@@ -63,6 +63,11 @@ portal/dist/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 
+# Agent installer build
+build/
+dist/
+.build_cache/
+
 # Bundled Python (large - download separately or use system Python)
 python32/
 

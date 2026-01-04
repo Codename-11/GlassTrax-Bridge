@@ -372,6 +372,62 @@ cd ../docs && npm run sync-version
 
 The API will automatically pick up the new version on restart.
 
+## Building Agent Installer
+
+The GlassTrax Agent can be packaged as a standalone Windows installer with system tray support.
+
+### Prerequisites
+
+1. **Inno Setup 6** - Download from https://jrsoftware.org/isdl.php
+2. **PowerShell 5.1+** - Included with Windows 10/11
+
+### Build Steps
+
+```powershell
+# Build installer
+.\build_agent.ps1
+
+# Clean build from scratch
+.\build_agent.ps1 -Clean
+
+# Build without compiling installer (for testing)
+.\build_agent.ps1 -SkipInstaller
+
+# Or use the batch wrapper
+BUILD_AGENT.bat
+```
+
+The script will:
+1. Download Python 3.11 32-bit embeddable package
+2. Enable pip and install agent dependencies
+3. Copy agent source files
+4. Generate Inno Setup script
+5. Compile the installer
+
+Output: `dist/GlassTraxAgent-X.X.X-Setup.exe`
+
+### Agent Run Modes
+
+| Mode | Flag | Description |
+|------|------|-------------|
+| Tray | `--tray` | System tray with start/stop controls (default for EXE) |
+| Service | `--service` | Background service for NSSM |
+| Console | `--console` | Console output for debugging |
+
+### Tray Icon States
+
+| State | Color | Description |
+|-------|-------|-------------|
+| Running | Green | Agent is running and healthy |
+| Stopped | Red | Agent is stopped |
+| Error | Yellow | Agent encountered an error |
+
+### Regenerating Icons
+
+```powershell
+.\python32\python.exe agent\icons\generate_icons.py
+```
+
 ## VS Code Setup
 
 Recommended extensions:

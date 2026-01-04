@@ -34,7 +34,7 @@ A multi-tenant API platform for secure, read-only access to GlassTrax ERP data v
 ### 1. Clone Repository
 
 ```powershell
-git clone https://github.com/YOUR_ORG/GlassTrax-Bridge.git
+git clone https://github.com/Codename-11/GlassTrax-Bridge.git
 cd GlassTrax-Bridge
 ```
 
@@ -242,6 +242,31 @@ AGENT_ENABLED=true \
 AGENT_URL=http://192.168.1.100:8001 \
 AGENT_KEY=gta_your_key_here \
 docker-compose up -d
+```
+
+### Agent Installer (Recommended)
+
+For easier deployment, download the standalone Windows installer from [Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases):
+
+- Includes 32-bit Python runtime (no Python installation needed)
+- System tray application with start/stop controls
+- Optional auto-start on Windows boot
+
+```powershell
+# Or build the installer locally (requires Inno Setup 6)
+.\build_agent.ps1
+```
+
+### Docker Images
+
+Pull from GitHub Container Registry:
+
+```bash
+# Latest version
+docker pull ghcr.io/codename-11/glasstrax-bridge:latest
+
+# Specific version
+docker pull ghcr.io/codename-11/glasstrax-bridge:1.0.0
 ```
 
 ## Versioning

@@ -14,7 +14,7 @@ This guide will help you set up and start using GlassTrax Bridge.
 ### 1. Clone or Extract the Project
 
 ```bash
-git clone https://github.com/YOUR_ORG/GlassTrax-Bridge.git
+git clone https://github.com/Codename-11/GlassTrax-Bridge.git
 cd GlassTrax-Bridge
 ```
 
