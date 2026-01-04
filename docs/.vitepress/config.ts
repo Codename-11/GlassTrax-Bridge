@@ -6,6 +6,13 @@ export default defineConfig({
   // Use /guide in production (single port), /docs in Docker (nginx handles routing)
   base: process.env.VITEPRESS_BASE || '/docs/',
 
+  // Ignore localhost links in documentation (they're examples, not real links)
+  ignoreDeadLinks: [
+    /^https?:\/\/localhost/,
+    /^https?:\/\/127\.0\.0\.1/,
+    /^https?:\/\/192\.168\./,
+  ],
+
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]
   ],
