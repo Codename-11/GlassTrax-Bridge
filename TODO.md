@@ -1,5 +1,8 @@
 # GlassTrax Bridge - TODO
 
+## Agent
+- [ ] Allow agent to check for updates and install them. Include check for updates in the context menu of the agent tray icon.
+
 Features and configuration options that are defined but not yet implemented.
 
 ## Not Yet Implemented

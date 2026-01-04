@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from agent import __version__
 from agent.auth import verify_agent_key
 from agent.config import get_config
-from agent.query import get_query_service
+from agent.query import get_query_service, PYODBC_AVAILABLE
 from agent.schemas import HealthResponse, QueryRequest, QueryResponse
 
 
@@ -25,6 +25,14 @@ async def lifespan(app: FastAPI):
     print(f"GlassTrax Agent v{__version__} starting on port {config.port}")
     print(f"DSN: {config.dsn} (readonly: {config.readonly})")
     print(f"Allowed tables: {', '.join(config.allowed_tables)}")
+
+    if not PYODBC_AVAILABLE:
+        print("\n" + "!" * 60)
+        print("WARNING: pyodbc is not installed!")
+        print("Database queries will fail until pyodbc is installed.")
+        print("\nTo install, run:")
+        print('  "C:\\Program Files\\GlassTrax Agent\\python\\python.exe" -m pip install pyodbc')
+        print("!" * 60 + "\n")
 
     yield
 
@@ -62,13 +70,26 @@ async def health_check() -> HealthResponse:
     No authentication required - used for monitoring.
     """
     config = get_config()
-    service = get_query_service()
 
+    # Check pyodbc first
+    if not PYODBC_AVAILABLE:
+        return HealthResponse(
+            status="degraded",
+            version=__version__,
+            pyodbc_installed=False,
+            database_connected=False,
+            dsn=config.dsn,
+            message="pyodbc not installed - run: python -m pip install pyodbc",
+        )
+
+    # Test database connection
+    service = get_query_service()
     db_connected = service.test_connection()
 
     return HealthResponse(
         status="healthy" if db_connected else "unhealthy",
         version=__version__,
+        pyodbc_installed=True,
         database_connected=db_connected,
         dsn=config.dsn,
         message=None if db_connected else "Database connection failed",

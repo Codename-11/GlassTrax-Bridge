@@ -422,6 +422,14 @@ Output: `dist/GlassTraxAgent-X.X.X-Setup.exe`
 | Stopped | Red | Agent is stopped |
 | Error | Yellow | Agent encountered an error |
 
+### Agent Configuration & Logs
+
+When installed, the agent stores configuration and logs in `%APPDATA%\GlassTrax Agent\`:
+- `agent_config.yaml` - Configuration file
+- `agent.log` - Log file (recreated on each run)
+
+Access via tray menu: "Open Config Folder" or "View Log File".
+
 ### Regenerating Icons
 
 ```powershell

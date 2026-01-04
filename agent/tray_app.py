@@ -5,6 +5,7 @@ Provides a system tray icon with start/stop controls and status monitoring.
 Uses pystray for cross-platform system tray support.
 """
 
+import logging
 import os
 import sys
 import threading
@@ -18,6 +19,33 @@ from pystray import Icon, Menu, MenuItem
 
 from agent import __version__
 from agent.config import get_config, get_config_dir
+
+
+def setup_logging() -> Path:
+    """
+    Configure logging to a file that recreates on each run.
+    Returns the log file path.
+    """
+    log_dir = get_config_dir()
+    log_file = log_dir / "agent.log"
+
+    # Clear log file on each run
+    log_file.write_text("")
+
+    # Configure root logger
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[
+            logging.FileHandler(log_file, mode="a", encoding="utf-8"),
+        ],
+    )
+
+    # Reduce noise from uvicorn access logs
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+    return log_file
 
 
 class AgentTray:
@@ -34,9 +62,13 @@ class AgentTray:
         self._server: Optional[uvicorn.Server] = None
         self._server_thread: Optional[threading.Thread] = None
         self._config = get_config()
+        self._log_file = setup_logging()
+        self._logger = logging.getLogger("agent.tray")
 
         # Load icons
         self._icons = self._load_icons()
+
+        self._logger.info(f"GlassTrax Agent v{__version__} initialized")
 
     def _load_icons(self) -> dict:
         """Load tray icons from icons/ directory or generate defaults"""
@@ -92,25 +124,23 @@ class AgentTray:
         return img
 
     def _create_menu(self) -> Menu:
-        """Create the context menu"""
-        is_running = self._state == self.STATE_RUNNING
-
+        """Create the context menu with dynamic items"""
+        # Use lambdas for dynamic text/enabled state (pystray requirement)
         return Menu(
             MenuItem(
-                "Stop Agent" if is_running else "Start Agent",
+                lambda item: "Stop Agent" if self._state == self.STATE_RUNNING else "Start Agent",
                 self._toggle_agent,
-                default=True,
             ),
             Menu.SEPARATOR,
             MenuItem(
                 "Open Health Check",
                 self._open_health,
-                enabled=is_running,
+                enabled=lambda item: self._state == self.STATE_RUNNING,
             ),
             MenuItem(
                 "Open API Docs",
                 self._open_docs,
-                enabled=is_running,
+                enabled=lambda item: self._state == self.STATE_RUNNING,
             ),
             Menu.SEPARATOR,
             MenuItem(
@@ -130,6 +160,7 @@ class AgentTray:
             ),
             Menu.SEPARATOR,
             MenuItem("Open Config Folder", self._open_config_folder),
+            MenuItem("View Log File", self._open_log),
             MenuItem("Exit", self._exit),
         )
 
@@ -146,12 +177,15 @@ class AgentTray:
             return
 
         try:
-            # Configure uvicorn
+            self._logger.info(f"Starting agent on port {self._config.port}")
+
+            # Configure uvicorn with logging disabled (we handle logging ourselves)
             config = uvicorn.Config(
                 "agent.main:app",
                 host="0.0.0.0",
                 port=self._config.port,
-                log_level="warning",  # Reduce logging in tray mode
+                log_level="warning",
+                log_config=None,  # Disable uvicorn's log config to avoid formatter errors
             )
             self._server = uvicorn.Server(config)
 
@@ -163,9 +197,11 @@ class AgentTray:
             self._server_thread.start()
 
             self._set_state(self.STATE_RUNNING)
+            self._logger.info(f"Agent started successfully on port {self._config.port}")
             self._notify("GlassTrax Agent Started", f"Listening on port {self._config.port}")
 
         except Exception as e:
+            self._logger.exception("Failed to start agent")
             self._set_state(self.STATE_ERROR)
             self._notify("Failed to Start Agent", str(e))
 
@@ -175,6 +211,8 @@ class AgentTray:
             return
 
         try:
+            self._logger.info("Stopping agent...")
+
             if self._server:
                 self._server.should_exit = True
 
@@ -185,9 +223,11 @@ class AgentTray:
             self._server = None
             self._server_thread = None
             self._set_state(self.STATE_STOPPED)
+            self._logger.info("Agent stopped")
             self._notify("GlassTrax Agent Stopped", "Agent has been stopped")
 
         except Exception as e:
+            self._logger.exception("Error stopping agent")
             self._set_state(self.STATE_ERROR)
             self._notify("Error Stopping Agent", str(e))
 
@@ -222,6 +262,14 @@ class AgentTray:
         else:
             webbrowser.open(f"file://{config_path}")
 
+    def _open_log(self, icon, item) -> None:
+        """Open the log file in default text editor"""
+        if self._log_file.exists():
+            if sys.platform == "win32":
+                os.startfile(str(self._log_file))
+            else:
+                webbrowser.open(f"file://{self._log_file}")
+
     def _exit(self, icon, item) -> None:
         """Exit the application"""
         if self._state == self.STATE_RUNNING:
@@ -241,6 +289,9 @@ class AgentTray:
         if auto_start:
             # Schedule auto-start after icon is ready
             def on_ready(icon):
+                # Set to running icon BEFORE showing (so notification uses green icon)
+                icon.icon = self._icons[self.STATE_RUNNING]
+                icon.visible = True
                 self._start_agent()
 
             self._icon.run(setup=on_ready)

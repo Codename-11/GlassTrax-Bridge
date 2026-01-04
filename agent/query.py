@@ -4,11 +4,29 @@ Query Execution Service
 Builds and executes SQL queries against GlassTrax via ODBC.
 """
 
-import pyodbc
 from typing import Any
 
 from agent.config import get_config
 from agent.schemas import FilterCondition, JoinClause, OrderBy, QueryRequest, QueryResponse
+
+# pyodbc is optional - may need manual installation
+try:
+    import pyodbc
+    PYODBC_AVAILABLE = True
+except ImportError:
+    pyodbc = None  # type: ignore
+    PYODBC_AVAILABLE = False
+
+
+def check_pyodbc_available() -> None:
+    """Raise helpful error if pyodbc is not installed"""
+    if not PYODBC_AVAILABLE:
+        raise ImportError(
+            "pyodbc is not installed. The GlassTrax Agent requires pyodbc to connect to the database.\n\n"
+            "To install pyodbc, open a command prompt and run:\n"
+            '  "C:\\Program Files\\GlassTrax Agent\\python\\python.exe" -m pip install pyodbc\n\n'
+            "Note: You also need the Pervasive ODBC driver installed on this system."
+        )
 
 
 class QueryService:
@@ -21,10 +39,11 @@ class QueryService:
 
     def __init__(self):
         self.config = get_config()
-        self._conn: pyodbc.Connection | None = None
+        self._conn: Any = None  # pyodbc.Connection or None
 
-    def _get_connection(self) -> pyodbc.Connection:
+    def _get_connection(self) -> Any:
         """Get or create database connection"""
+        check_pyodbc_available()
         if self._conn is None:
             readonly_str = "Yes" if self.config.readonly else "No"
             conn_str = f"DSN={self.config.dsn};ReadOnly={readonly_str}"

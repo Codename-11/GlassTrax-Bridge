@@ -368,3 +368,5 @@ cd portal && npm run lint          # ESLint
 30. **Release workflow** - Push `vX.X.X` tag to trigger build + release on GitHub Actions
 31. **Docker registry** - Images published to `ghcr.io/codename-11/glasstrax-bridge`
 32. **Agent version** - Reads from VERSION file dynamically (not hardcoded)
+33. **Agent config location** - Installed mode uses `%APPDATA%\GlassTrax Agent\` for config and logs (avoids Program Files permission issues)
+34. **Agent logging** - Log file at `agent.log` in config dir, recreated on each run, accessible via tray menu "View Log File"

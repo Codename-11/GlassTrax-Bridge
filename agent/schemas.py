@@ -77,8 +77,9 @@ class QueryResponse(BaseModel):
 class HealthResponse(BaseModel):
     """Agent health check response"""
 
-    status: Literal["healthy", "unhealthy"] = Field(..., description="Agent health status")
+    status: Literal["healthy", "unhealthy", "degraded"] = Field(..., description="Agent health status")
     version: str = Field(..., description="Agent version")
+    pyodbc_installed: bool = Field(..., description="Whether pyodbc is installed")
     database_connected: bool = Field(..., description="Whether database connection is working")
     dsn: str = Field(..., description="Configured DSN name")
     message: str | None = Field(default=None, description="Additional status message")

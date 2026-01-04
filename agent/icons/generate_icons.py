@@ -63,7 +63,8 @@ def create_bridge_icon(center_color: tuple, filename: str, size: int = 64) -> No
     output_path = Path(__file__).parent / filename
 
     # Create multiple sizes for ICO format
-    sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64)]
+    # Include 256x256 for Windows Explorer and Inno Setup
+    sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
     imgs = []
     for s_size in sizes:
         if s_size[0] == size:

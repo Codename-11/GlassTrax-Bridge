@@ -123,7 +123,8 @@ Returns agent status and database connectivity:
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "pyodbc_installed": true,
   "database_connected": true,
   "dsn": "LIVE"
 }
@@ -222,11 +223,8 @@ agent:
 
 ## Logs
 
-- **Manual run**: Logs appear in console
+- **Tray Mode**: Logs written to `%APPDATA%\GlassTrax Agent\agent.log`
+- **Console Mode**: Logs appear in console
 - **Service**: Logs written to `data\agent.log`
 
-To increase log verbosity, set environment variable:
-```powershell
-$env:LOG_LEVEL="DEBUG"
-.\agent\run_agent.bat
-```
+The log file is recreated each time the agent starts. Access it via the tray menu "View Log File" option.

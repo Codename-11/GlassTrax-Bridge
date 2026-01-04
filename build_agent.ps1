@@ -134,7 +134,7 @@ $PthFile = Get-ChildItem $PythonDir -Filter "python*._pth" | Select-Object -Firs
 if ($PthFile) {
     $PthContent = Get-Content $PthFile.FullName -Raw
     # Uncomment 'import site' to enable pip
-    $PthContent = $PthContent -replace "^#import site", "import site"
+    $PthContent = $PthContent -replace "#import site", "import site"
     # Add Lib\site-packages if not present
     if ($PthContent -notmatch "Lib\\site-packages") {
         $PthContent = $PthContent + "`nLib\site-packages"
@@ -256,6 +256,10 @@ ArchitecturesAllowed=x86 x64
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\agent\icons\icon_running.ico
 UninstallDisplayName={#MyAppName}
+; Upgrade support
+CloseApplications=force
+CloseApplicationsFilter=pythonw.exe,python.exe
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -291,11 +295,20 @@ Filename: "{app}\python\pythonw.exe"; Parameters: "-m agent.cli --tray"; Working
 Filename: "taskkill"; Parameters: "/F /IM pythonw.exe"; Flags: runhidden; RunOnceId: "StopAgent"
 
 [Code]
+// Stop agent before install/upgrade
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  // Try to gracefully stop any running agent
+  Exec('taskkill', '/F /IM pythonw.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Result := '';
+end;
+
 // Check if agent is running and warn user
 function InitializeUninstall(): Boolean;
 begin
   Result := True;
-  // Could add check for running process here
 end;
 "@
 

@@ -16,6 +16,20 @@ Look for `GlassTraxAgent-X.X.X-Setup.exe`.
    - **Create desktop shortcut** - Quick access from desktop
    - **Start automatically with Windows** - Agent runs on boot
 
+### Upgrading
+
+To upgrade to a newer version:
+1. Download the new installer
+2. Run it - the installer will automatically:
+   - Stop the running agent
+   - Upgrade files in place
+   - Preserve your configuration (stored in AppData)
+3. The agent will launch automatically after upgrade
+
+::: tip Configuration Preserved
+Your `agent_config.yaml` and API key are stored in `%APPDATA%\GlassTrax Agent\` and are not affected by upgrades or reinstalls.
+:::
+
 ## First Run
 
 When the agent starts for the first time, it will:
@@ -31,8 +45,10 @@ The API key is shown only once on first run. Save it securely - you'll need it t
 ## Configuration
 
 The agent configuration file is located at:
-- **Installer**: `C:\Program Files\GlassTrax Agent\agent_config.yaml`
-- **Manual**: Same directory as the agent files
+- **Installed (Tray Mode)**: `%APPDATA%\GlassTrax Agent\agent_config.yaml`
+- **Manual/Development**: Same directory as the agent files
+
+The configuration is stored in AppData to avoid permission issues with Program Files.
 
 ### Key Settings
 
@@ -66,7 +82,8 @@ The agent runs in the Windows system tray with these controls:
 | **Start/Stop Agent** | Toggle the agent on/off |
 | **Open Health Check** | View health status in browser |
 | **Open API Docs** | View Swagger documentation |
-| **Open Config Folder** | Open the installation directory |
+| **Open Config Folder** | Open the configuration directory |
+| **View Log File** | Open the agent log file |
 | **Exit** | Stop agent and exit |
 
 ### Tray Icon States
@@ -102,7 +119,8 @@ Expected response:
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "pyodbc_installed": true,
   "database_connected": true,
   "dsn": "LIVE"
 }
@@ -146,10 +164,10 @@ sc stop GlassTraxAgent
 
 1. Check that port 8001 is not in use
 2. Verify ODBC DSN is configured correctly
-3. Run in console mode for detailed errors:
-   ```powershell
-   GlassTraxAgent.exe --console
-   ```
+3. Check the log file: `%APPDATA%\GlassTrax Agent\agent.log`
+4. Run in console mode for detailed errors:
+   - Use "GlassTrax Agent (Console)" from Start Menu
+   - Or run: `"C:\Program Files\GlassTrax Agent\python\python.exe" -m agent.cli --console`
 
 ### Database connection failed
 
