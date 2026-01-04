@@ -60,7 +60,7 @@ $GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
 # Paths
 $ProjectRoot = $PSScriptRoot
 $BuildCache = Join-Path $ProjectRoot ".build_cache"
-$BuildDir = Join-Path $ProjectRoot "build" "agent"
+$BuildDir = Join-Path (Join-Path $ProjectRoot "build") "agent"
 $DistDir = Join-Path $ProjectRoot "dist"
 $AgentDir = Join-Path $ProjectRoot "agent"
 
