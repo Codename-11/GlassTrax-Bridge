@@ -17,7 +17,7 @@ from PIL import Image
 from pystray import Icon, Menu, MenuItem
 
 from agent import __version__
-from agent.config import get_config
+from agent.config import get_config, get_config_dir
 
 
 class AgentTray:
@@ -216,7 +216,7 @@ class AgentTray:
 
     def _open_config_folder(self, icon, item) -> None:
         """Open the config folder in explorer"""
-        config_path = Path(__file__).parent.parent
+        config_path = get_config_dir()
         if sys.platform == "win32":
             os.startfile(str(config_path))
         else:

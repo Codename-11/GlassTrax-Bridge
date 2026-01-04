@@ -4,7 +4,9 @@ Agent Configuration
 Loads and manages agent_config.yaml settings.
 """
 
+import os
 import secrets
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -12,14 +14,37 @@ import bcrypt
 from ruamel.yaml import YAML
 
 
-def get_project_root() -> Path:
-    """Get the project root directory"""
+def get_install_dir() -> Path:
+    """Get the installation directory (where agent/ folder is)"""
     return Path(__file__).parent.parent
+
+
+def get_config_dir() -> Path:
+    """
+    Get the config directory.
+
+    Uses %APPDATA%/GlassTrax Agent on Windows for user-writable storage.
+    Falls back to install directory for development/portable mode.
+    """
+    # Check if running from Program Files (installed mode)
+    install_dir = get_install_dir()
+    is_installed = "Program Files" in str(install_dir)
+
+    if is_installed and sys.platform == "win32":
+        # Use AppData for installed mode (user-writable)
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            config_dir = Path(appdata) / "GlassTrax Agent"
+            config_dir.mkdir(parents=True, exist_ok=True)
+            return config_dir
+
+    # Development/portable mode - use install directory
+    return install_dir
 
 
 def get_config_path() -> Path:
     """Get path to agent_config.yaml"""
-    return get_project_root() / "agent_config.yaml"
+    return get_config_dir() / "agent_config.yaml"
 
 
 class AgentConfig:
