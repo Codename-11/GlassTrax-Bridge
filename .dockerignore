@@ -44,8 +44,8 @@ python32/
 .env.local
 *.local
 
-# Documentation source (only need built output)
-docs/
+# Documentation - include source for Docker build
+# (node_modules and build outputs already excluded above)
 
 # Logs
 *.log
