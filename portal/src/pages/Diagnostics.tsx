@@ -100,19 +100,6 @@ export function DiagnosticsPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pass':
-        return <Badge className="bg-green-600 hover:bg-green-700">Pass</Badge>;
-      case 'fail':
-        return <Badge variant="destructive">Fail</Badge>;
-      case 'warning':
-        return <Badge className="bg-yellow-500 hover:bg-yellow-600">Warning</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
   const getOverallBadge = (status: string) => {
     switch (status) {
       case 'healthy':
@@ -123,19 +110,6 @@ export function DiagnosticsPage() {
         return <Badge variant="destructive" className="text-lg px-4 py-1">Unhealthy</Badge>;
       default:
         return <Badge variant="secondary" className="text-lg px-4 py-1">{status}</Badge>;
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pass':
-        return <CheckIcon className="h-5 w-5 text-green-600" />;
-      case 'fail':
-        return <XIcon className="h-5 w-5 text-red-600" />;
-      case 'warning':
-        return <AlertIcon className="h-5 w-5 text-yellow-600" />;
-      default:
-        return null;
     }
   };
 

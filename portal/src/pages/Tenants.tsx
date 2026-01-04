@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { tenantsApi, getErrorMessage, formatLocalDate, type Tenant } from '@/lib/api';
+import { tenantsApi, getErrorMessage, formatLocalDate } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
