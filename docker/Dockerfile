@@ -29,14 +29,14 @@ RUN npm run build
 # ============================================
 FROM node:20-alpine AS docs-builder
 
-WORKDIR /build/docs-site
+WORKDIR /build/docs
 
 # Copy package files
-COPY docs-site/package*.json ./
+COPY docs/package*.json ./
 RUN npm ci
 
 # Copy source and build
-COPY docs-site/ ./
+COPY docs/ ./
 RUN npm run build
 
 # ============================================
@@ -71,7 +71,7 @@ COPY VERSION ./
 COPY --from=portal-builder /build/portal/dist ./portal/dist
 
 # Copy built docs from stage 2
-COPY --from=docs-builder /build/docs-site/.vitepress/dist ./docs-site/.vitepress/dist
+COPY --from=docs-builder /build/docs/.vitepress/dist ./docs/.vitepress/dist
 
 # Copy nginx template (will be processed by entrypoint)
 COPY docker/nginx.conf.template /etc/nginx/nginx.conf.template

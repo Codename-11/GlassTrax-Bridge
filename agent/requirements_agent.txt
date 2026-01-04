@@ -1,6 +1,11 @@
 # GlassTrax Agent - Minimal Dependencies
 # These are bundled with the standalone installer
 # For development, use the main requirements.txt
+#
+# NOTE: pyodbc is NOT included - it requires:
+#   1. C++ build tools to compile
+#   2. ODBC drivers installed on target system
+# The agent will prompt user to install pyodbc if missing.
 
 # Core API
 fastapi>=0.109.0
@@ -8,13 +13,10 @@ uvicorn[standard]>=0.27.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 
-# Database (32-bit ODBC)
-pyodbc>=5.0.0
-
 # Configuration
 ruamel.yaml>=0.18.0
 
-# Authentication
+# Authentication (has pre-built wheels)
 bcrypt>=4.0.0
 
 # System Tray (Windows)

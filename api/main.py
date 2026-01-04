@@ -354,7 +354,7 @@ app.include_router(
 # Mount static files for production (when built assets exist)
 # Portal at root, VitePress docs at /docs
 _portal_dist = Path(__file__).parent.parent / "portal" / "dist"
-_docs_dist = Path(__file__).parent.parent / "docs-site" / ".vitepress" / "dist"
+_docs_dist = Path(__file__).parent.parent / "docs" / ".vitepress" / "dist"
 
 if _docs_dist.exists():
     # Mount VitePress user docs at /docs (Swagger is at /api/docs)

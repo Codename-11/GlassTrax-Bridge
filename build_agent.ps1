@@ -178,7 +178,7 @@ if (-not (Test-Path $RequirementsFile)) {
 }
 
 try {
-    $pipInstall = & $PythonExe -m pip install -r $RequirementsFile --no-warn-script-location 2>&1
+    $pipInstall = & $PythonExe -m pip install -r $RequirementsFile --no-warn-script-location --only-binary :all: 2>&1
     Write-Host "  Done" -ForegroundColor Green
 } catch {
     Write-Host "  ERROR: Failed to install dependencies: $_" -ForegroundColor Red

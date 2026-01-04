@@ -23,14 +23,14 @@ venv
 
 # Node
 portal/node_modules
-docs-site/node_modules
+docs/node_modules
 npm-debug.log
 yarn-error.log
 
 # Build outputs (we rebuild in Docker)
 portal/dist
-docs-site/.vitepress/dist
-docs-site/.vitepress/cache
+docs/.vitepress/dist
+docs/.vitepress/cache
 
 # Local data
 data/*.db
