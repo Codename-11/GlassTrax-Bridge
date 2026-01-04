@@ -61,10 +61,9 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy API source code and utilities
+# Copy API source code
 COPY api/ ./api/
-COPY utils/ ./utils/
-COPY config.yaml ./
+COPY config.example.yaml ./config.yaml
 COPY VERSION ./
 
 # Copy built portal from stage 1

@@ -135,9 +135,14 @@ if ($PthFile) {
     $PthContent = Get-Content $PthFile.FullName -Raw
     # Uncomment 'import site' to enable pip
     $PthContent = $PthContent -replace "^#import site", "import site"
-    # Also add Lib\site-packages if not present
+    # Add Lib\site-packages if not present
     if ($PthContent -notmatch "Lib\\site-packages") {
         $PthContent = $PthContent + "`nLib\site-packages"
+    }
+    # Add parent directory (..) so Python can find agent module at {app}\agent
+    # When python.exe runs from {app}\python\, .. resolves to {app}\
+    if ($PthContent -notmatch "^\.\.$" -and $PthContent -notmatch "`n\.\.$") {
+        $PthContent = $PthContent + "`n.."
     }
     Set-Content -Path $PthFile.FullName -Value $PthContent -NoNewline
     Write-Host "  Modified $($PthFile.Name)" -ForegroundColor Green
