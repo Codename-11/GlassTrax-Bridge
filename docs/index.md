@@ -5,6 +5,9 @@ hero:
   name: GlassTrax Bridge
   text: REST API for GlassTrax ERP
   tagline: Access your GlassTrax data through a modern, secure REST API
+  image:
+    src: /logo.svg
+    alt: GlassTrax Bridge
   actions:
     - theme: brand
       text: Get Started
@@ -14,92 +17,94 @@ hero:
       link: /api/
 
 features:
-  - icon: 🐳
-    title: Docker + Agent (Recommended)
-    details: Run API and portal in Docker, with a lightweight Windows agent for Pervasive ODBC access.
   - icon: 🔐
-    title: Secure Authentication
-    details: JWT tokens and API keys with bcrypt hashing. Auto-generated admin key on first run.
+    title: Secure by Design
+    details: API key authentication with bcrypt hashing, JWT tokens for portal access, and read-only database connections.
   - icon: 🏢
-    title: Multi-tenant
-    details: Create applications with isolated API keys and permissions for different integrations.
+    title: Multi-Tenant Architecture
+    details: Create isolated applications with their own API keys, permissions, and rate limits for different integrations.
   - icon: 📊
     title: Full Audit Trail
-    details: Every API request is logged with attribution, timing, and status information.
+    details: Every API request is logged with attribution, timing, and status. Export logs and filter by date, key, or endpoint.
   - icon: 🖥️
     title: Admin Portal
-    details: Web-based management interface for keys, applications, and system diagnostics.
+    details: Modern web interface for managing API keys, applications, settings, and system diagnostics.
+  - icon: 🐳
+    title: Flexible Deployment
+    details: Docker + Windows Agent (recommended), Windows standalone, or Docker-only for testing.
   - icon: ⚡
-    title: Real-time Monitoring
-    details: View access logs in real-time, run diagnostics, and manage server from the portal.
+    title: Real-Time Monitoring
+    details: Live access logs, connection status indicators, and one-click diagnostics from the portal.
 ---
 
 <p align="center">
   <img src="/screenshots/glasstrax_bridge_main_dashboard.png" alt="GlassTrax Bridge Dashboard" style="max-width: 90%; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
 </p>
 
-## Installation Methods
+## What is GlassTrax Bridge?
 
-### Docker + Windows Agent (Recommended)
+GlassTrax Bridge provides a modern REST API layer on top of your GlassTrax ERP system. It enables secure, read-only access to customer, order, and other business data through a well-documented API.
 
-The recommended deployment runs the API and admin portal in Docker, with a lightweight Windows agent installed on the machine with GlassTrax ODBC access.
+### Key Capabilities
 
-**Step 1:** Install the GlassTrax API Agent on Windows
-- Download `GlassTraxAPIAgent-X.X.X-Setup.exe` from [Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases)
-- Run installer and start agent from system tray
-- Save the API key shown on first run
+| Feature | Description |
+|---------|-------------|
+| **REST API** | JSON-based endpoints for customers, orders, and more |
+| **Admin Portal** | Web UI for managing keys, viewing logs, and configuration |
+| **Multi-Tenant** | Separate API keys per application with granular permissions |
+| **Audit Logging** | Complete request history with filtering and CSV export |
+| **Rate Limiting** | Per-key request limits to protect your database |
 
-**Step 2:** Start Docker with agent connection
-```bash
-AGENT_ENABLED=true \
-AGENT_URL=http://YOUR_WINDOWS_IP:8001 \
-AGENT_KEY=gta_your_key_here \
-docker-compose up -d
+### Architecture Overview
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Your Apps     │────▶│  GlassTrax      │────▶│   GlassTrax     │
+│   (API Client)  │     │  Bridge API     │     │   Database      │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                              │
+                              ▼
+                        ┌─────────────────┐
+                        │  Admin Portal   │
+                        │  (Web UI)       │
+                        └─────────────────┘
 ```
 
-**Step 3:** Access the application
-- Portal: `http://localhost:3000`
-- Agent health: `http://WINDOWS_IP:8001/health`
+For Docker deployments, the API connects to a Windows agent for ODBC access:
 
-::: tip Why Docker + Agent?
-- **Separation of concerns**: Docker handles the web stack, Windows handles ODBC
-- **Easy updates**: Update Docker container without touching the Windows agent
-- **Security**: Only the agent has direct database access
-- **Cross-platform**: Run the portal anywhere Docker runs
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Docker        │────▶│   Windows       │────▶│   GlassTrax     │
+│   (API+Portal)  │     │   Agent         │     │   Database      │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+## Quick Links
+
+<div class="quick-links">
+
+- 📖 **[Getting Started](/guide/getting-started)** - Installation and first-time setup
+- 🔑 **[Authentication](/guide/authentication)** - API keys and admin login
+- 📚 **[API Reference](/api/)** - Endpoint documentation
+- 🐳 **[Deployment Guide](/guide/deployment)** - Docker and Windows options
+- ⚙️ **[Configuration](/guide/configuration)** - Settings and customization
+
+</div>
+
+## Requirements
+
+| Component | Requirement |
+|-----------|-------------|
+| **Docker Host** | Docker with docker-compose |
+| **Windows Agent** | Windows with Pervasive ODBC driver |
+| **Browser** | Modern browser for admin portal |
+
+::: tip Ready to get started?
+Follow the [Getting Started guide](/guide/getting-started) for step-by-step installation instructions.
 :::
-
----
-
-### Other Installation Methods (Beta)
-
-::: warning Beta Methods
-The following methods are available but considered beta. Docker + Agent is the recommended approach for production deployments.
-:::
-
-#### Windows All-in-One
-
-Run everything directly on Windows. Requires 32-bit Python for Pervasive ODBC.
-
-```bash
-# Clone and setup
-git clone https://github.com/Codename-11/GlassTrax-Bridge.git
-cd GlassTrax-Bridge
-
-# Start production server
-.\run_prod.bat
-```
-
-#### Docker Standalone
-
-For testing without GlassTrax database access:
-
-```bash
-docker pull ghcr.io/codename-11/glasstrax-bridge:latest
-docker-compose up -d
-```
 
 ---
 
 <div style="text-align: center; margin-top: 2rem; color: #666;">
-  <p>GlassTrax Bridge • Copyright (c) 2025-2026 Axiom-Labs</p>
+  <p>Copyright © 2025-2026 Axiom-Labs. All Rights Reserved.</p>
 </div>
