@@ -25,7 +25,7 @@ export default defineConfig([
       // Relax react-refresh for utility files that export hooks/functions
       'react-refresh/only-export-components': [
         'warn',
-        { allowConstantExport: true, allowExportNames: ['useAuth', 'useTheme', 'badgeVariants', 'buttonVariants'] },
+        { allowConstantExport: true, allowExportNames: ['useAuth', 'useTheme', 'useFormField', 'badgeVariants', 'buttonVariants'] },
       ],
       // Disable the setState in effect rule - this pattern is used in the codebase
       'react-hooks/set-state-in-effect': 'off',

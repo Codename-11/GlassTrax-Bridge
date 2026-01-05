@@ -22,27 +22,24 @@ Usage:
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Callable
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-
 from api.config import get_api_settings, get_db_settings, load_yaml_config
-from api.routers import customers_router, orders_router, keys_router
-from api.schemas.responses import ErrorResponse, HealthResponse
+from api.database import DATABASE_PATH, engine, get_db, init_db
+from api.dependencies import close_glasstrax_service, get_glasstrax_service
 from api.middleware import RequestLoggingMiddleware
 from api.middleware.rate_limit import limiter, rate_limit_exceeded_handler
-from api.dependencies import close_glasstrax_service, get_glasstrax_service
-from api.database import init_db, get_db, DATABASE_PATH, engine
-from api.models import Tenant, APIKey
+from api.models import APIKey, Tenant
+from api.routers import customers_router, keys_router, orders_router
+from api.schemas.responses import ErrorResponse
 
 
 # Load settings

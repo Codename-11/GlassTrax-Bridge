@@ -18,8 +18,9 @@ Uses synchronous SQLAlchemy (no greenlet dependency).
 """
 
 from pathlib import Path
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Database file location
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -64,7 +65,7 @@ def init_db():
     Call this on application startup.
     """
     # Import models to register them with Base
-    from api.models import api_key, tenant, access_log  # noqa: F401
+    from api.models import access_log, api_key, tenant  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     print(f"Database initialized at: {DATABASE_PATH}")

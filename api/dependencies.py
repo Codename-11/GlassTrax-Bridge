@@ -14,10 +14,10 @@ Provides dependency injection for:
 - Configuration settings
 """
 
-from typing import Generator
+from collections.abc import Generator
 
-from api.services.glasstrax import GlassTraxService
 from api.services.config_service import get_config_service
+from api.services.glasstrax import GlassTraxService
 
 
 # Service instances (created on first request, reused)
