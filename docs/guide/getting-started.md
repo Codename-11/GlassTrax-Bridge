@@ -29,38 +29,70 @@ The agent runs on port 8001 by default. Verify it's working:
 curl http://localhost:8001/health
 ```
 
-#### Step 2: Configure Docker Environment
+#### Step 2: Create Docker Compose File
 
-On your Docker host, create a `.env` file:
+Create a `docker-compose.yml` file on your Docker host:
 
-```bash
-# Copy the example environment file
-cp .env.example .env
+```yaml
+version: '3.8'
 
-# Edit with your settings
-nano .env
-```
-
-Configure your `.env` file:
-
-```env
-# Enable agent mode
-AGENT_ENABLED=true
-
-# Windows machine IP running the agent
-AGENT_URL=http://192.168.1.100:8001
-
-# API key from agent first run (starts with gta_)
-AGENT_KEY=gta_your_key_here
-
-# Optional settings
-PORT=3000
-TZ=America/New_York
+services:
+  glasstrax-bridge:
+    image: ghcr.io/codename-11/glasstrax-bridge:latest
+    container_name: glasstrax-bridge
+    ports:
+      - "3000:80"
+    volumes:
+      - ./data:/app/data
+    environment:
+      # GlassTrax API Agent Configuration
+      - GLASSTRAX_AGENT_ENABLED=true
+      - GLASSTRAX_AGENT_URL=http://192.168.1.100:8001  # Your Windows IP
+      - GLASSTRAX_AGENT_KEY=gta_your_key_here          # Key from Step 1
+      - TZ=America/New_York
+    restart: unless-stopped
 ```
 
 ::: tip Finding Your Windows IP
 Run `ipconfig` on Windows to find the IPv4 address (e.g., 192.168.1.100)
 :::
+
+**Update these values:**
+- `GLASSTRAX_AGENT_URL` - Replace `192.168.1.100` with your Windows machine's IP
+- `GLASSTRAX_AGENT_KEY` - Paste the API key from Step 1
+
+#### Option: Use .env File
+
+For cleaner configuration, you can use a `.env` file instead of hardcoding values:
+
+**docker-compose.yml:**
+```yaml
+version: '3.8'
+
+services:
+  glasstrax-bridge:
+    image: ghcr.io/codename-11/glasstrax-bridge:latest
+    container_name: glasstrax-bridge
+    ports:
+      - "${PORT:-3000}:80"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - GLASSTRAX_AGENT_ENABLED=${AGENT_ENABLED:-false}
+      - GLASSTRAX_AGENT_URL=${AGENT_URL:-}
+      - GLASSTRAX_AGENT_KEY=${AGENT_KEY:-}
+      - TZ=${TZ:-America/New_York}
+    restart: unless-stopped
+```
+
+**.env:**
+```env
+AGENT_ENABLED=true
+AGENT_URL=http://192.168.1.100:8001
+AGENT_KEY=gta_your_key_here
+PORT=3000
+TZ=America/New_York
+```
 
 #### Step 3: Start Docker
 
@@ -239,39 +271,16 @@ curl -H "X-API-Key: gtb_your_admin_key" http://localhost:3000/api/v1/customers?l
 
 ---
 
-## Docker Compose Reference
+## Environment Variables Reference
 
-Here's a complete `docker-compose.yml` example:
-
-```yaml
-version: '3.8'
-
-services:
-  glasstrax-bridge:
-    image: ghcr.io/codename-11/glasstrax-bridge:latest
-    container_name: glasstrax-bridge
-    ports:
-      - "${PORT:-3000}:80"
-    volumes:
-      - ./data:/app/data
-    environment:
-      - GLASSTRAX_AGENT_ENABLED=${AGENT_ENABLED:-false}
-      - GLASSTRAX_AGENT_URL=${AGENT_URL:-http://host.docker.internal:8001}
-      - GLASSTRAX_AGENT_KEY=${AGENT_KEY:-}
-      - GLASSTRAX_AGENT_TIMEOUT=${AGENT_TIMEOUT:-30}
-      - TZ=${TZ:-America/New_York}
-    restart: unless-stopped
-```
-
-With `.env` file:
-
-```env
-AGENT_ENABLED=true
-AGENT_URL=http://192.168.1.100:8001
-AGENT_KEY=gta_your_key_here
-PORT=3000
-TZ=America/New_York
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GLASSTRAX_AGENT_ENABLED` | Enable agent mode for database access | `false` |
+| `GLASSTRAX_AGENT_URL` | URL of Windows agent (e.g., `http://192.168.1.100:8001`) | - |
+| `GLASSTRAX_AGENT_KEY` | API key from agent first run (`gta_...`) | - |
+| `GLASSTRAX_AGENT_TIMEOUT` | Agent request timeout in seconds | `30` |
+| `TZ` | Timezone (IANA format) | `America/New_York` |
+| `PORT` | Port to expose (when using .env) | `3000` |
 
 ---
 
