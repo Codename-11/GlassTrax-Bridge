@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { tenantsApi, getErrorMessage, formatLocalDate } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { tenantsApi, getErrorMessage, formatLocalDate } from '@/lib/api'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@/components/ui/dialog'
 import {
   Table,
   TableBody,
@@ -23,40 +23,38 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/components/ui/table'
 
 export function TenantsPage() {
-  const queryClient = useQueryClient();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const queryClient = useQueryClient()
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   const { data: tenants, isLoading } = useQuery({
     queryKey: ['tenants'],
     queryFn: () => tenantsApi.list().then((r) => r.data),
-  });
+  })
 
   const createMutation = useMutation({
     mutationFn: (data: { name: string; description?: string; contact_email?: string }) =>
       tenantsApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tenants'] });
-      setIsCreateOpen(false);
-      toast.success('Application registered successfully');
+      queryClient.invalidateQueries({ queryKey: ['tenants'] })
+      setIsCreateOpen(false)
+      toast.success('Application registered successfully')
     },
     onError: (error) => {
       toast.error('Failed to register application', {
         description: getErrorMessage(error),
-      });
+      })
     },
-  });
+  })
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Applications</h1>
-          <p className="text-muted-foreground">
-            Manage apps and services that connect to the API
-          </p>
+          <p className="text-muted-foreground">Manage apps and services that connect to the API</p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
@@ -80,7 +78,7 @@ export function TenantsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="py-8 text-center">Loading...</div>
           ) : tenants && tenants.length > 0 ? (
             <Table>
               <TableHeader>
@@ -115,19 +113,19 @@ export function TenantsPage() {
               </TableBody>
             </Table>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-muted-foreground py-8 text-center">
               No applications registered yet. Register one to get started.
             </div>
           )}
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
 interface CreateAppFormProps {
-  onSubmit: (data: { name: string; description?: string; contact_email?: string }) => void;
-  isLoading: boolean;
+  onSubmit: (data: { name: string; description?: string; contact_email?: string }) => void
+  isLoading: boolean
 }
 
 function CreateAppForm({ onSubmit, isLoading }: CreateAppFormProps) {
@@ -135,24 +133,22 @@ function CreateAppForm({ onSubmit, isLoading }: CreateAppFormProps) {
     name: '',
     description: '',
     contact_email: '',
-  });
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     onSubmit({
       name: formData.name,
       description: formData.description || undefined,
       contact_email: formData.contact_email || undefined,
-    });
-  };
+    })
+  }
 
   return (
     <form onSubmit={handleSubmit}>
       <DialogHeader>
         <DialogTitle>Register Application</DialogTitle>
-        <DialogDescription>
-          Add an app or service that will connect to the API
-        </DialogDescription>
+        <DialogDescription>Add an app or service that will connect to the API</DialogDescription>
       </DialogHeader>
 
       <div className="grid gap-4 py-4">
@@ -195,5 +191,5 @@ function CreateAppForm({ onSubmit, isLoading }: CreateAppFormProps) {
         </Button>
       </DialogFooter>
     </form>
-  );
+  )
 }

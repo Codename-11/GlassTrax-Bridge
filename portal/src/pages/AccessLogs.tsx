@@ -1,10 +1,16 @@
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { accessLogsApi, tenantsApi, formatLocalTime, formatLocalDate, parseUTCDate } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  accessLogsApi,
+  tenantsApi,
+  formatLocalTime,
+  formatLocalDate,
+  parseUTCDate,
+} from '@/lib/api'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -12,132 +18,155 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/components/ui/table'
 
-type StatusFilter = 'all' | '2xx' | '4xx' | '5xx';
-type MethodFilter = 'all' | 'GET' | 'POST' | 'PUT' | 'DELETE';
+type StatusFilter = 'all' | '2xx' | '4xx' | '5xx'
+type MethodFilter = 'all' | 'GET' | 'POST' | 'PUT' | 'DELETE'
 
 export function AccessLogsPage() {
-  const [searchPath, setSearchPath] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [methodFilter, setMethodFilter] = useState<MethodFilter>('all');
-  const [keyFilter, setKeyFilter] = useState('');
-  const [tenantFilter, setTenantFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('');
+  const [searchPath, setSearchPath] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [methodFilter, setMethodFilter] = useState<MethodFilter>('all')
+  const [keyFilter, setKeyFilter] = useState('')
+  const [tenantFilter, setTenantFilter] = useState<string>('all')
+  const [dateFilter, setDateFilter] = useState<string>('')
 
-  const { data: logs, isLoading, refetch } = useQuery({
+  const {
+    data: logs,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['accessLogs'],
     queryFn: () => accessLogsApi.list({ limit: 200 }).then((r) => r.data),
     refetchInterval: 10000, // Auto-refresh every 10 seconds
-  });
+  })
 
   const { data: tenants } = useQuery({
     queryKey: ['tenants'],
     queryFn: () => tenantsApi.list().then((r) => r.data),
-  });
+  })
 
   // Client-side filtering
   const filteredLogs = useMemo(() => {
-    if (!logs) return [];
+    if (!logs) return []
 
     return logs.filter((log) => {
       // Path search
       if (searchPath && !log.path.toLowerCase().includes(searchPath.toLowerCase())) {
-        return false;
+        return false
       }
 
       // Method filter
       if (methodFilter !== 'all' && log.method !== methodFilter) {
-        return false;
+        return false
       }
 
       // Status filter
       if (statusFilter !== 'all') {
         if (statusFilter === '2xx' && (log.status_code < 200 || log.status_code >= 300)) {
-          return false;
+          return false
         }
         if (statusFilter === '4xx' && (log.status_code < 400 || log.status_code >= 500)) {
-          return false;
+          return false
         }
         if (statusFilter === '5xx' && log.status_code < 500) {
-          return false;
+          return false
         }
       }
 
       // API Key filter
-      if (keyFilter && (!log.key_prefix || !log.key_prefix.toLowerCase().includes(keyFilter.toLowerCase()))) {
-        return false;
+      if (
+        keyFilter &&
+        (!log.key_prefix || !log.key_prefix.toLowerCase().includes(keyFilter.toLowerCase()))
+      ) {
+        return false
       }
 
       // Tenant filter
       if (tenantFilter !== 'all') {
-        const tenantId = parseInt(tenantFilter, 10);
+        const tenantId = parseInt(tenantFilter, 10)
         if (log.tenant_id !== tenantId) {
-          return false;
+          return false
         }
       }
 
       // Date filter
       if (dateFilter) {
-        const logDate = parseUTCDate(log.created_at);
-        const filterDate = new Date(dateFilter);
+        const logDate = parseUTCDate(log.created_at)
+        const filterDate = new Date(dateFilter)
         // Compare year, month, day only
         if (
           logDate.getFullYear() !== filterDate.getFullYear() ||
           logDate.getMonth() !== filterDate.getMonth() ||
           logDate.getDate() !== filterDate.getDate()
         ) {
-          return false;
+          return false
         }
       }
 
-      return true;
-    });
-  }, [logs, searchPath, methodFilter, statusFilter, keyFilter, tenantFilter, dateFilter]);
+      return true
+    })
+  }, [logs, searchPath, methodFilter, statusFilter, keyFilter, tenantFilter, dateFilter])
 
   const getStatusColor = (status: number) => {
-    if (status >= 500) return 'destructive';
-    if (status >= 400) return 'secondary';
-    return 'default';
-  };
+    if (status >= 500) return 'destructive'
+    if (status >= 400) return 'secondary'
+    return 'default'
+  }
 
   const getMethodColor = (method: string) => {
     switch (method) {
       case 'GET':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
       case 'POST':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
       case 'PUT':
       case 'PATCH':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
       case 'DELETE':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
     }
-  };
+  }
 
   const clearFilters = () => {
-    setSearchPath('');
-    setStatusFilter('all');
-    setMethodFilter('all');
-    setKeyFilter('');
-    setTenantFilter('all');
-    setDateFilter('');
-  };
+    setSearchPath('')
+    setStatusFilter('all')
+    setMethodFilter('all')
+    setKeyFilter('')
+    setTenantFilter('all')
+    setDateFilter('')
+  }
 
-  const hasActiveFilters = searchPath || statusFilter !== 'all' || methodFilter !== 'all' || keyFilter || tenantFilter !== 'all' || dateFilter;
+  const hasActiveFilters =
+    searchPath ||
+    statusFilter !== 'all' ||
+    methodFilter !== 'all' ||
+    keyFilter ||
+    tenantFilter !== 'all' ||
+    dateFilter
 
   const getTenantName = (tenantId: number | null) => {
-    if (!tenantId || !tenants) return '';
-    const tenant = tenants.find((t) => t.id === tenantId);
-    return tenant?.name || '';
-  };
+    if (!tenantId || !tenants) return ''
+    const tenant = tenants.find((t) => t.id === tenantId)
+    return tenant?.name || ''
+  }
 
   const exportToCSV = () => {
-    if (!filteredLogs.length) return;
+    if (!filteredLogs.length) return
 
-    const headers = ['Time', 'Method', 'Path', 'Query', 'Status', 'Duration (ms)', 'Application', 'API Key', 'Request ID'];
+    const headers = [
+      'Time',
+      'Method',
+      'Path',
+      'Query',
+      'Status',
+      'Duration (ms)',
+      'Application',
+      'API Key',
+      'Request ID',
+    ]
     const rows = filteredLogs.map((log) => [
       parseUTCDate(log.created_at).toISOString(),
       log.method,
@@ -148,32 +177,30 @@ export function AccessLogsPage() {
       getTenantName(log.tenant_id),
       log.key_prefix || '',
       log.request_id || '',
-    ]);
+    ])
 
     const csvContent = [
       headers.join(','),
       ...rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')),
-    ].join('\n');
+    ].join('\n')
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `access-logs-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `access-logs-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Access Logs</h1>
-          <p className="text-muted-foreground">
-            View all API requests and their details
-          </p>
+          <p className="text-muted-foreground">View all API requests and their details</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportToCSV} disabled={!filteredLogs.length}>
@@ -200,7 +227,7 @@ export function AccessLogsPage() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-6">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Date</label>
+              <label className="mb-1.5 block text-sm font-medium">Date</label>
               <Input
                 type="date"
                 value={dateFilter}
@@ -208,7 +235,7 @@ export function AccessLogsPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Search Path</label>
+              <label className="mb-1.5 block text-sm font-medium">Search Path</label>
               <Input
                 placeholder="e.g., /api/v1/customers"
                 value={searchPath}
@@ -216,9 +243,9 @@ export function AccessLogsPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Method</label>
+              <label className="mb-1.5 block text-sm font-medium">Method</label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="border-input bg-background flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                 value={methodFilter}
                 onChange={(e) => setMethodFilter(e.target.value as MethodFilter)}
               >
@@ -230,9 +257,9 @@ export function AccessLogsPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Status</label>
+              <label className="mb-1.5 block text-sm font-medium">Status</label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="border-input bg-background flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               >
@@ -243,9 +270,9 @@ export function AccessLogsPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Application</label>
+              <label className="mb-1.5 block text-sm font-medium">Application</label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="border-input bg-background flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                 value={tenantFilter}
                 onChange={(e) => setTenantFilter(e.target.value)}
               >
@@ -258,7 +285,7 @@ export function AccessLogsPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">API Key Prefix</label>
+              <label className="mb-1.5 block text-sm font-medium">API Key Prefix</label>
               <Input
                 placeholder="e.g., gtb_abc123"
                 value={keyFilter}
@@ -279,7 +306,7 @@ export function AccessLogsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="py-8 text-center">Loading...</div>
           ) : filteredLogs.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
@@ -297,7 +324,7 @@ export function AccessLogsPage() {
                 <TableBody>
                   {filteredLogs.map((log) => (
                     <TableRow key={log.id}>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
+                      <TableCell className="text-muted-foreground font-mono text-xs">
                         <div>{formatLocalDate(log.created_at)}</div>
                         <div>{formatLocalTime(log.created_at)}</div>
                       </TableCell>
@@ -315,9 +342,7 @@ export function AccessLogsPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getStatusColor(log.status_code)}>
-                          {log.status_code}
-                        </Badge>
+                        <Badge variant={getStatusColor(log.status_code)}>{log.status_code}</Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {log.response_time_ms?.toFixed(0)}ms
@@ -331,9 +356,7 @@ export function AccessLogsPage() {
                       </TableCell>
                       <TableCell>
                         {log.key_prefix ? (
-                          <code className="text-xs bg-muted px-1 rounded">
-                            {log.key_prefix}...
-                          </code>
+                          <code className="bg-muted rounded px-1 text-xs">{log.key_prefix}...</code>
                         ) : (
                           <span className="text-muted-foreground text-xs">-</span>
                         )}
@@ -344,7 +367,7 @@ export function AccessLogsPage() {
               </Table>
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-muted-foreground py-8 text-center">
               {logs && logs.length > 0
                 ? 'No logs match your filters.'
                 : 'No access logs yet. Make some API requests to see them here.'}
@@ -353,5 +376,5 @@ export function AccessLogsPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

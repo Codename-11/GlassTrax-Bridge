@@ -1,12 +1,18 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { apiKeysApi, tenantsApi, getErrorMessage, type APIKey, type CreateAPIKeyRequest } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import {
+  apiKeysApi,
+  tenantsApi,
+  getErrorMessage,
+  type APIKey,
+  type CreateAPIKeyRequest,
+} from '@/lib/api'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -15,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@/components/ui/dialog'
 import {
   Table,
   TableBody,
@@ -23,29 +29,29 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+} from '@/components/ui/table'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 export function ApiKeysPage() {
-  const queryClient = useQueryClient();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newKeyResult, setNewKeyResult] = useState<{ key: APIKey; plaintext: string } | null>(null);
+  const queryClient = useQueryClient()
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [newKeyResult, setNewKeyResult] = useState<{ key: APIKey; plaintext: string } | null>(null)
 
   const { data: apiKeys, isLoading } = useQuery({
     queryKey: ['apiKeys'],
     queryFn: () => apiKeysApi.list().then((r) => r.data),
-  });
+  })
 
   const { data: tenants } = useQuery({
     queryKey: ['tenants'],
     queryFn: () => tenantsApi.list().then((r) => r.data),
-  });
+  })
 
   const createMutation = useMutation({
     mutationFn: (data: CreateAPIKeyRequest) => apiKeysApi.create(data),
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
-      const created = response.data;
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
+      const created = response.data
       setNewKeyResult({
         key: {
           id: created.id,
@@ -62,47 +68,47 @@ export function ApiKeysPage() {
           use_count: 0,
         },
         plaintext: created.key,
-      });
-      setIsCreateOpen(false);
-      toast.success('API key created successfully');
+      })
+      setIsCreateOpen(false)
+      toast.success('API key created successfully')
     },
     onError: (error) => {
       toast.error('Failed to create API key', {
         description: getErrorMessage(error),
-      });
+      })
     },
-  });
+  })
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiKeysApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
-      toast.success('API key deleted');
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
+      toast.success('API key deleted')
     },
     onError: (error) => {
       toast.error('Failed to delete API key', {
         description: getErrorMessage(error),
-      });
+      })
     },
-  });
+  })
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, activate }: { id: number; activate: boolean }) =>
       activate ? apiKeysApi.activate(id) : apiKeysApi.deactivate(id),
     onSuccess: (_, { activate }) => {
-      queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
-      toast.success(activate ? 'API key activated' : 'API key deactivated');
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
+      toast.success(activate ? 'API key activated' : 'API key deactivated')
     },
     onError: (error, { activate }) => {
       toast.error(`Failed to ${activate ? 'activate' : 'deactivate'} API key`, {
         description: getErrorMessage(error),
-      });
+      })
     },
-  });
+  })
 
   const getTenantName = (tenantId: number) => {
-    return tenants?.find((t) => t.id === tenantId)?.name ?? `Tenant ${tenantId}`;
-  };
+    return tenants?.find((t) => t.id === tenantId)?.name ?? `Tenant ${tenantId}`
+  }
 
   return (
     <div className="space-y-6">
@@ -132,19 +138,19 @@ export function ApiKeysPage() {
             API Key Created Successfully
           </AlertTitle>
           <AlertDescription className="mt-2">
-            <p className="text-green-700 dark:text-green-300 mb-2">
+            <p className="mb-2 text-green-700 dark:text-green-300">
               Copy this key now. You won't be able to see it again!
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 bg-white dark:bg-black p-2 rounded border font-mono text-sm break-all">
+              <code className="flex-1 rounded border bg-white p-2 font-mono text-sm break-all dark:bg-black">
                 {newKeyResult.plaintext}
               </code>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  navigator.clipboard.writeText(newKeyResult.plaintext);
-                  toast.success('API key copied to clipboard');
+                  navigator.clipboard.writeText(newKeyResult.plaintext)
+                  toast.success('API key copied to clipboard')
                 }}
               >
                 Copy
@@ -172,7 +178,7 @@ export function ApiKeysPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="py-8 text-center">Loading...</div>
           ) : apiKeys && apiKeys.length > 0 ? (
             <Table>
               <TableHeader>
@@ -191,7 +197,7 @@ export function ApiKeysPage() {
                   <TableRow key={key.id}>
                     <TableCell className="font-medium">{key.name}</TableCell>
                     <TableCell>
-                      <code className="text-sm bg-muted px-1 rounded">{key.key_prefix}...</code>
+                      <code className="bg-muted rounded px-1 text-sm">{key.key_prefix}...</code>
                     </TableCell>
                     <TableCell>{getTenantName(key.tenant_id)}</TableCell>
                     <TableCell>
@@ -214,7 +220,7 @@ export function ApiKeysPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-muted-foreground text-sm">
                         {key.use_count} requests
                       </span>
                     </TableCell>
@@ -235,7 +241,7 @@ export function ApiKeysPage() {
                           className="text-destructive"
                           onClick={() => {
                             if (confirm('Are you sure you want to delete this API key?')) {
-                              deleteMutation.mutate(key.id);
+                              deleteMutation.mutate(key.id)
                             }
                           }}
                         >
@@ -248,20 +254,20 @@ export function ApiKeysPage() {
               </TableBody>
             </Table>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-muted-foreground py-8 text-center">
               No API keys yet. Create one to get started.
             </div>
           )}
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
 interface CreateKeyFormProps {
-  tenants: { id: number; name: string }[];
-  onSubmit: (data: CreateAPIKeyRequest) => void;
-  isLoading: boolean;
+  tenants: { id: number; name: string }[]
+  onSubmit: (data: CreateAPIKeyRequest) => void
+  isLoading: boolean
 }
 
 function CreateKeyForm({ tenants, onSubmit, isLoading }: CreateKeyFormProps) {
@@ -270,25 +276,23 @@ function CreateKeyForm({ tenants, onSubmit, isLoading }: CreateKeyFormProps) {
     tenant_id: tenants[0]?.id ?? 0,
     permissions: 'customers:read,orders:read',
     rate_limit: 60,
-  });
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     onSubmit({
       tenant_id: formData.tenant_id,
       name: formData.name,
       permissions: formData.permissions.split(',').map((p) => p.trim()),
       rate_limit: formData.rate_limit,
-    });
-  };
+    })
+  }
 
   return (
     <form onSubmit={handleSubmit}>
       <DialogHeader>
         <DialogTitle>Create New API Key</DialogTitle>
-        <DialogDescription>
-          Create a new API key for accessing GlassTrax data
-        </DialogDescription>
+        <DialogDescription>Create a new API key for accessing GlassTrax data</DialogDescription>
       </DialogHeader>
 
       <div className="grid gap-4 py-4">
@@ -307,7 +311,7 @@ function CreateKeyForm({ tenants, onSubmit, isLoading }: CreateKeyFormProps) {
           <Label htmlFor="tenant">Application</Label>
           <select
             id="tenant"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="border-input bg-background flex h-10 w-full rounded-md border px-3 py-2 text-sm"
             value={formData.tenant_id}
             onChange={(e) => setFormData({ ...formData, tenant_id: Number(e.target.value) })}
           >
@@ -327,7 +331,7 @@ function CreateKeyForm({ tenants, onSubmit, isLoading }: CreateKeyFormProps) {
             value={formData.permissions}
             onChange={(e) => setFormData({ ...formData, permissions: e.target.value })}
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Available: customers:read, orders:read, admin:*, *:*
           </p>
         </div>
@@ -351,5 +355,5 @@ function CreateKeyForm({ tenants, onSubmit, isLoading }: CreateKeyFormProps) {
         </Button>
       </DialogFooter>
     </form>
-  );
+  )
 }

@@ -1,48 +1,55 @@
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { tenantsApi, apiKeysApi, accessLogsApi, healthApi, formatLocalTime, formatLocalDate } from '@/lib/api';
-import { ConnectionStatus } from '@/components/ui/status-indicator';
+import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  tenantsApi,
+  apiKeysApi,
+  accessLogsApi,
+  healthApi,
+  formatLocalTime,
+  formatLocalDate,
+} from '@/lib/api'
+import { ConnectionStatus } from '@/components/ui/status-indicator'
 
 export function DashboardPage() {
   const { data: health, isLoading: healthLoading } = useQuery({
     queryKey: ['health'],
     queryFn: () => healthApi.get(),
     refetchInterval: 30000, // Refresh every 30 seconds
-  });
+  })
 
   const { data: tenants } = useQuery({
     queryKey: ['tenants'],
-    queryFn: () => tenantsApi.list().then(r => r.data),
-  });
+    queryFn: () => tenantsApi.list().then((r) => r.data),
+  })
 
   const { data: apiKeys } = useQuery({
     queryKey: ['apiKeys'],
-    queryFn: () => apiKeysApi.list().then(r => r.data),
-  });
+    queryFn: () => apiKeysApi.list().then((r) => r.data),
+  })
 
   const { data: recentLogsResponse } = useQuery({
     queryKey: ['recentLogs'],
     queryFn: () => accessLogsApi.list({ limit: 10 }),
-  });
+  })
 
-  const recentLogs = recentLogsResponse?.data;
-  const totalRequests = recentLogsResponse?.pagination?.total_items ?? 0;
+  const recentLogs = recentLogsResponse?.data
+  const totalRequests = recentLogsResponse?.pagination?.total_items ?? 0
 
   const stats = [
     { name: 'Applications', value: tenants?.length ?? 0 },
-    { name: 'Active API Keys', value: apiKeys?.filter(k => k.is_active).length ?? 0 },
+    { name: 'Active API Keys', value: apiKeys?.filter((k) => k.is_active).length ?? 0 },
     { name: 'Total API Keys', value: apiKeys?.length ?? 0 },
     { name: 'Total Requests', value: totalRequests },
-  ];
+  ]
 
   const getTenantName = (tenantId: number | null) => {
-    if (!tenantId || !tenants) return null;
-    const tenant = tenants.find((t) => t.id === tenantId);
-    return tenant?.name || null;
-  };
+    if (!tenantId || !tenants) return null
+    const tenant = tenants.find((t) => t.id === tenantId)
+    return tenant?.name || null
+  }
 
   return (
     <div className="space-y-6">
@@ -59,15 +66,13 @@ export function DashboardPage() {
                 </Badge>
               )}
             </div>
-            <p className="text-muted-foreground">
-              Overview of your GlassTrax Bridge API platform
-            </p>
+            <p className="text-muted-foreground">Overview of your GlassTrax Bridge API platform</p>
           </div>
         </div>
 
         {/* Database Connection Status */}
         {!healthLoading && health && (
-          <Card className="border-none shadow-none bg-transparent">
+          <Card className="border-none bg-transparent shadow-none">
             <CardContent className="p-0">
               <ConnectionStatus
                 name={health.database_name}
@@ -99,7 +104,11 @@ export function DashboardPage() {
             View All Logs
           </Button>
         </Link>
-        <a href="https://codename-11.github.io/GlassTrax-Bridge/" target="_blank" rel="noopener noreferrer">
+        <a
+          href="https://codename-11.github.io/GlassTrax-Bridge/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <Button variant="outline" className="gap-2">
             <BookOpenIcon className="h-4 w-4" />
             Documentation
@@ -200,11 +209,11 @@ export function DashboardPage() {
           {recentLogs && recentLogs.length > 0 ? (
             <div className="space-y-2">
               {recentLogs.map((log) => {
-                const tenantName = getTenantName(log.tenant_id);
+                const tenantName = getTenantName(log.tenant_id)
                 return (
                   <div
                     key={log.id}
-                    className="flex items-center justify-between py-2 border-b last:border-0"
+                    className="flex items-center justify-between border-b py-2 last:border-0"
                   >
                     <div className="flex items-center gap-3">
                       <span
@@ -220,72 +229,91 @@ export function DashboardPage() {
                         {log.method} {log.path}
                       </span>
                       {tenantName && (
-                        <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                          {tenantName}
-                        </span>
+                        <span className="bg-muted rounded px-2 py-0.5 text-xs">{tenantName}</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      {log.key_prefix && (
-                        <span className="font-mono">{log.key_prefix}...</span>
-                      )}
+                    <div className="text-muted-foreground flex items-center gap-4 text-sm">
+                      {log.key_prefix && <span className="font-mono">{log.key_prefix}...</span>}
                       <span>{log.response_time_ms?.toFixed(0)}ms</span>
                       <span className="text-xs">
                         {formatLocalDate(log.created_at)} {formatLocalTime(log.created_at)}
                       </span>
                     </div>
                   </div>
-                );
+                )
               })}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-4">
-              No recent activity
-            </p>
+            <p className="text-muted-foreground py-4 text-center">No recent activity</p>
           )}
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
 // Icons
 function KeyIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+      />
     </svg>
-  );
+  )
 }
 
 function BuildingIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+      />
     </svg>
-  );
+  )
 }
 
 function ListIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+      />
     </svg>
-  );
+  )
 }
 
 function BookOpenIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+      />
     </svg>
-  );
+  )
 }
 
 function CodeIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+      />
     </svg>
-  );
+  )
 }

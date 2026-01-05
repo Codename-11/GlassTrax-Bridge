@@ -1,24 +1,24 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils'
 
 interface StatusIndicatorProps {
-  status: 'online' | 'offline' | 'warning' | 'loading';
-  label?: string;
-  showPulse?: boolean;
-  size?: 'sm' | 'md' | 'lg';
-  className?: string;
+  status: 'online' | 'offline' | 'warning' | 'loading'
+  label?: string
+  showPulse?: boolean
+  size?: 'sm' | 'md' | 'lg'
+  className?: string
 }
 
 const sizeClasses = {
   sm: 'h-2 w-2',
   md: 'h-3 w-3',
   lg: 'h-4 w-4',
-};
+}
 
 const pulseClasses = {
   sm: 'h-2 w-2',
   md: 'h-3 w-3',
   lg: 'h-4 w-4',
-};
+}
 
 const statusColors = {
   online: {
@@ -41,7 +41,7 @@ const statusColors = {
     pulse: 'bg-blue-400',
     text: 'text-blue-600 dark:text-blue-400',
   },
-};
+}
 
 export function StatusIndicator({
   status,
@@ -50,7 +50,7 @@ export function StatusIndicator({
   size = 'md',
   className,
 }: StatusIndicatorProps) {
-  const colors = statusColors[status];
+  const colors = statusColors[status]
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
@@ -59,34 +59,26 @@ export function StatusIndicator({
         {showPulse && status === 'online' && (
           <span
             className={cn(
-              'absolute inline-flex rounded-full opacity-75 animate-ping',
+              'absolute inline-flex animate-ping rounded-full opacity-75',
               pulseClasses[size],
               colors.pulse
             )}
           />
         )}
         {/* Solid dot */}
-        <span
-          className={cn(
-            'relative inline-flex rounded-full',
-            sizeClasses[size],
-            colors.dot
-          )}
-        />
+        <span className={cn('relative inline-flex rounded-full', sizeClasses[size], colors.dot)} />
       </span>
-      {label && (
-        <span className={cn('text-sm font-medium', colors.text)}>{label}</span>
-      )}
+      {label && <span className={cn('text-sm font-medium', colors.text)}>{label}</span>}
     </div>
-  );
+  )
 }
 
 interface ConnectionStatusProps {
-  name: string;
-  connected: boolean;
-  showLabel?: boolean;
-  size?: 'sm' | 'md' | 'lg';
-  className?: string;
+  name: string
+  connected: boolean
+  showLabel?: boolean
+  size?: 'sm' | 'md' | 'lg'
+  className?: string
 }
 
 export function ConnectionStatus({
@@ -109,9 +101,7 @@ export function ConnectionStatus({
           <span
             className={cn(
               'text-xs',
-              connected
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-red-600 dark:text-red-400'
+              connected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
             )}
           >
             {connected ? 'Connected' : 'Disconnected'}
@@ -119,5 +109,5 @@ export function ConnectionStatus({
         )}
       </div>
     </div>
-  );
+  )
 }

@@ -1,126 +1,139 @@
-import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { api, diagnosticsApi, getErrorMessage, type DiagnosticCheck } from '@/lib/api';
-import { StatusIndicator } from '@/components/ui/status-indicator';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useState } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { api, diagnosticsApi, getErrorMessage, type DiagnosticCheck } from '@/lib/api'
+import { StatusIndicator } from '@/components/ui/status-indicator'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 interface ResetResponse {
-  success: boolean;
+  success: boolean
   data: {
-    tables_cleared: string[];
-    message: string;
-  };
-  message: string;
+    tables_cleared: string[]
+    message: string
+  }
+  message: string
 }
 
 interface RestartResponse {
-  success: boolean;
+  success: boolean
   data: {
-    message: string;
-    restart_in_seconds: number;
-  };
-  message: string;
+    message: string
+    restart_in_seconds: number
+  }
+  message: string
 }
 
 export function DiagnosticsPage() {
-  const [confirmText, setConfirmText] = useState('');
-  const [showResetResult, setShowResetResult] = useState<string[] | null>(null);
-  const [showRestartConfirm, setShowRestartConfirm] = useState(false);
-  const [isRestarting, setIsRestarting] = useState(false);
+  const [confirmText, setConfirmText] = useState('')
+  const [showResetResult, setShowResetResult] = useState<string[] | null>(null)
+  const [showRestartConfirm, setShowRestartConfirm] = useState(false)
+  const [isRestarting, setIsRestarting] = useState(false)
 
-  const { data: diagnostics, isLoading, refetch, isFetching } = useQuery({
+  const {
+    data: diagnostics,
+    isLoading,
+    refetch,
+    isFetching,
+  } = useQuery({
     queryKey: ['diagnostics'],
     queryFn: () => diagnosticsApi.get().then((r) => r.data),
     refetchOnWindowFocus: false,
-  });
+  })
 
   const resetMutation = useMutation({
     mutationFn: async () => {
       const response = await api.post<ResetResponse>('/api/v1/admin/reset-database', {
         confirmation: confirmText,
-      });
-      return response.data;
+      })
+      return response.data
     },
     onSuccess: (data) => {
-      setShowResetResult(data.data.tables_cleared);
-      setConfirmText('');
+      setShowResetResult(data.data.tables_cleared)
+      setConfirmText('')
       toast.success('Database reset complete', {
         description: 'Please restart the API server to generate a new admin key.',
         duration: 10000,
-      });
+      })
     },
     onError: (error) => {
       toast.error('Failed to reset database', {
         description: getErrorMessage(error),
-      });
+      })
     },
-  });
+  })
 
   const handleRestart = async () => {
-    setIsRestarting(true);
-    setShowRestartConfirm(false);
+    setIsRestarting(true)
+    setShowRestartConfirm(false)
     try {
-      await api.post<RestartResponse>('/api/v1/admin/restart-server');
+      await api.post<RestartResponse>('/api/v1/admin/restart-server')
       toast.success('Server is restarting...', {
         description: 'The page will reconnect automatically.',
         duration: 5000,
-      });
+      })
       // Wait for server to come back up and reload
       setTimeout(() => {
         const checkServer = setInterval(async () => {
           try {
-            await api.get('/health');
-            clearInterval(checkServer);
-            setIsRestarting(false);
-            toast.success('Server restarted successfully!');
-            refetch();
+            await api.get('/health')
+            clearInterval(checkServer)
+            setIsRestarting(false)
+            toast.success('Server restarted successfully!')
+            refetch()
           } catch {
             // Server still restarting, keep checking
           }
-        }, 1000);
+        }, 1000)
         // Stop checking after 30 seconds
         setTimeout(() => {
-          clearInterval(checkServer);
-          setIsRestarting(false);
+          clearInterval(checkServer)
+          setIsRestarting(false)
           toast.error('Server restart timed out', {
             description: 'Please check if the server is running.',
-          });
-        }, 30000);
-      }, 2000);
+          })
+        }, 30000)
+      }, 2000)
     } catch (error) {
-      setIsRestarting(false);
+      setIsRestarting(false)
       toast.error('Failed to restart server', {
         description: getErrorMessage(error),
-      });
+      })
     }
-  };
+  }
 
   const getOverallBadge = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <Badge className="bg-green-600 hover:bg-green-700 text-lg px-4 py-1">Healthy</Badge>;
+        return <Badge className="bg-green-600 px-4 py-1 text-lg hover:bg-green-700">Healthy</Badge>
       case 'degraded':
-        return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-lg px-4 py-1">Degraded</Badge>;
+        return (
+          <Badge className="bg-yellow-500 px-4 py-1 text-lg hover:bg-yellow-600">Degraded</Badge>
+        )
       case 'unhealthy':
-        return <Badge variant="destructive" className="text-lg px-4 py-1">Unhealthy</Badge>;
+        return (
+          <Badge variant="destructive" className="px-4 py-1 text-lg">
+            Unhealthy
+          </Badge>
+        )
       default:
-        return <Badge variant="secondary" className="text-lg px-4 py-1">{status}</Badge>;
+        return (
+          <Badge variant="secondary" className="px-4 py-1 text-lg">
+            {status}
+          </Badge>
+        )
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">System Diagnostics</h1>
-          <p className="text-muted-foreground">
-            Check system health and connectivity status
-          </p>
+          <p className="text-muted-foreground">Check system health and connectivity status</p>
         </div>
         <Button onClick={() => refetch()} disabled={isFetching}>
           {isFetching ? 'Running...' : 'Run Diagnostics'}
@@ -131,7 +144,7 @@ export function DiagnosticsPage() {
         <Card>
           <CardContent className="py-8">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
               <p className="text-muted-foreground">Running diagnostics...</p>
             </div>
           </CardContent>
@@ -155,9 +168,7 @@ export function DiagnosticsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Diagnostic Checks</CardTitle>
-              <CardDescription>
-                {diagnostics.checks.length} checks completed
-              </CardDescription>
+              <CardDescription>{diagnostics.checks.length} checks completed</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {diagnostics.checks.map((check, index) => (
@@ -176,7 +187,7 @@ export function DiagnosticsPage() {
                 </div>
                 {showRestartConfirm ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Restart server?</span>
+                    <span className="text-muted-foreground text-sm">Restart server?</span>
                     <Button
                       variant="destructive"
                       size="sm"
@@ -201,14 +212,14 @@ export function DiagnosticsPage() {
                   >
                     {isRestarting ? (
                       <>
-                        <span className="animate-spin mr-2">
+                        <span className="mr-2 animate-spin">
                           <RefreshIcon className="h-4 w-4" />
                         </span>
                         Restarting...
                       </>
                     ) : (
                       <>
-                        <RefreshIcon className="h-4 w-4 mr-2" />
+                        <RefreshIcon className="mr-2 h-4 w-4" />
                         Restart Server
                       </>
                     )}
@@ -219,7 +230,7 @@ export function DiagnosticsPage() {
             <CardContent>
               <div className="grid gap-2 md:grid-cols-2">
                 {Object.entries(diagnostics.system_info).map(([key, value]) => (
-                  <div key={key} className="flex justify-between py-2 border-b last:border-0">
+                  <div key={key} className="flex justify-between border-b py-2 last:border-0">
                     <span className="text-muted-foreground capitalize">
                       {key.replace(/_/g, ' ')}
                     </span>
@@ -245,9 +256,7 @@ export function DiagnosticsPage() {
                 <DangerIcon className="h-5 w-5 text-red-500" />
                 <CardTitle className="text-red-500">Danger Zone</CardTitle>
               </div>
-              <CardDescription>
-                Destructive actions that cannot be undone
-              </CardDescription>
+              <CardDescription>Destructive actions that cannot be undone</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {showResetResult && (
@@ -256,10 +265,10 @@ export function DiagnosticsPage() {
                     Database Reset Complete
                   </AlertTitle>
                   <AlertDescription className="mt-2">
-                    <p className="text-green-700 dark:text-green-300 mb-2">
+                    <p className="mb-2 text-green-700 dark:text-green-300">
                       The following tables were cleared:
                     </p>
-                    <ul className="list-disc list-inside text-sm text-green-600 dark:text-green-400">
+                    <ul className="list-inside list-disc text-sm text-green-600 dark:text-green-400">
                       {showResetResult.map((item, i) => (
                         <li key={i}>{item}</li>
                       ))}
@@ -279,19 +288,20 @@ export function DiagnosticsPage() {
                 </Alert>
               )}
 
-              <div className="p-4 rounded-lg border border-red-500/30 bg-red-500/5">
-                <h4 className="font-medium text-red-600 dark:text-red-400 mb-2">
+              <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
+                <h4 className="mb-2 font-medium text-red-600 dark:text-red-400">
                   Reset Application Database
                 </h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  This will permanently delete all API keys, applications, and access logs.
-                  A new admin key will be generated when you restart the server.
+                <p className="text-muted-foreground mb-4 text-sm">
+                  This will permanently delete all API keys, applications, and access logs. A new
+                  admin key will be generated when you restart the server.
                 </p>
 
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm text-muted-foreground block mb-1">
-                      Type <code className="bg-muted px-1 rounded font-bold">RESET DATABASE</code> to confirm:
+                    <label className="text-muted-foreground mb-1 block text-sm">
+                      Type <code className="bg-muted rounded px-1 font-bold">RESET DATABASE</code>{' '}
+                      to confirm:
                     </label>
                     <Input
                       value={confirmText}
@@ -309,7 +319,7 @@ export function DiagnosticsPage() {
                   >
                     {resetMutation.isPending ? (
                       <>
-                        <span className="animate-spin mr-2">⏳</span>
+                        <span className="mr-2 animate-spin">⏳</span>
                         Resetting...
                       </>
                     ) : (
@@ -324,64 +334,76 @@ export function DiagnosticsPage() {
       ) : (
         <Card>
           <CardContent className="py-8">
-            <div className="text-center text-muted-foreground">
+            <div className="text-muted-foreground text-center">
               Click "Run Diagnostics" to check system health
             </div>
           </CardContent>
         </Card>
       )}
     </div>
-  );
+  )
 }
 
 function DiagnosticCheckCard({ check }: { check: DiagnosticCheck }) {
   const getStatusBg = (status: string) => {
     switch (status) {
       case 'pass':
-        return 'border-l-green-500 bg-green-500/5';
+        return 'border-l-green-500 bg-green-500/5'
       case 'fail':
-        return 'border-l-red-500 bg-red-500/5';
+        return 'border-l-red-500 bg-red-500/5'
       case 'warning':
-        return 'border-l-yellow-500 bg-yellow-500/5';
+        return 'border-l-yellow-500 bg-yellow-500/5'
       default:
-        return 'border-l-gray-500';
+        return 'border-l-gray-500'
     }
-  };
+  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pass':
-        return <CheckIcon className="h-5 w-5 text-green-600" />;
+        return <CheckIcon className="h-5 w-5 text-green-600" />
       case 'fail':
-        return <XIcon className="h-5 w-5 text-red-600" />;
+        return <XIcon className="h-5 w-5 text-red-600" />
       case 'warning':
-        return <AlertIcon className="h-5 w-5 text-yellow-600" />;
+        return <AlertIcon className="h-5 w-5 text-yellow-600" />
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   return (
-    <div className={`border-l-4 rounded-r-lg p-4 ${getStatusBg(check.status)}`}>
+    <div className={`rounded-r-lg border-l-4 p-4 ${getStatusBg(check.status)}`}>
       <div className="flex items-start gap-3">
         <div className="mt-0.5">{getStatusIcon(check.status)}</div>
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <h4 className="font-medium">{check.name}</h4>
             <Badge
-              variant={check.status === 'pass' ? 'default' : check.status === 'fail' ? 'destructive' : 'secondary'}
-              className={check.status === 'pass' ? 'bg-green-600' : check.status === 'warning' ? 'bg-yellow-500' : ''}
+              variant={
+                check.status === 'pass'
+                  ? 'default'
+                  : check.status === 'fail'
+                    ? 'destructive'
+                    : 'secondary'
+              }
+              className={
+                check.status === 'pass'
+                  ? 'bg-green-600'
+                  : check.status === 'warning'
+                    ? 'bg-yellow-500'
+                    : ''
+              }
             >
               {check.status.toUpperCase()}
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">{check.message}</p>
+          <p className="text-muted-foreground mt-1 text-sm">{check.message}</p>
           {check.details && Object.keys(check.details).length > 0 && (
             <details className="mt-2">
-              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+              <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs">
                 Show details
               </summary>
-              <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto">
+              <pre className="bg-muted mt-2 overflow-x-auto rounded p-2 text-xs">
                 {JSON.stringify(check.details, null, 2)}
               </pre>
             </details>
@@ -389,7 +411,7 @@ function DiagnosticCheckCard({ check }: { check: DiagnosticCheck }) {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // Icons
@@ -398,7 +420,7 @@ function CheckIcon({ className }: { className?: string }) {
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
     </svg>
-  );
+  )
 }
 
 function XIcon({ className }: { className?: string }) {
@@ -406,29 +428,44 @@ function XIcon({ className }: { className?: string }) {
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
     </svg>
-  );
+  )
 }
 
 function AlertIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+      />
     </svg>
-  );
+  )
 }
 
 function DangerIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+      />
     </svg>
-  );
+  )
 }
 
 function RefreshIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+      />
     </svg>
-  );
+  )
 }
