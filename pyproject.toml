@@ -11,7 +11,6 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "pydantic-settings",
-    "pyodbc",
     "pyyaml",
     "ruamel.yaml",
     "python-dotenv",
@@ -27,6 +26,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# pyodbc requires ODBC drivers - Windows only for Pervasive
+odbc = ["pyodbc"]
 dev = [
     "pytest",
     "pytest-cov",
