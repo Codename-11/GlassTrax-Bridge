@@ -278,33 +278,38 @@ class TestConvertValue:
 class TestExecute:
     """Test query execution."""
 
-    @pytest.fixture
-    def query_service(self, mock_config, mock_pyodbc):
-        """Create QueryService with mocks."""
+    def test_execute_success(self, mock_config, mock_pyodbc):
+        """Successful query should return success response."""
         with patch("agent.config.get_config", return_value=mock_config):
             with patch("agent.query.PYODBC_AVAILABLE", True):
                 with patch("agent.query.pyodbc", mock_pyodbc):
-                    from agent.query import QueryService
+                    with patch("agent.query.check_pyodbc_available"):
+                        from agent.query import QueryService
 
-                    service = QueryService()
-                    # Force connection to use mock
-                    service._conn = mock_pyodbc.connect("")
-                    return service
+                        service = QueryService()
+                        service._conn = mock_pyodbc.connect("")
 
-    def test_execute_success(self, query_service):
-        """Successful query should return success response."""
-        request = QueryRequest(table="customer")
-        result = query_service.execute(request)
+                        request = QueryRequest(table="customer")
+                        result = service.execute(request)
 
-        assert result.success is True
-        assert result.error is None
-        assert result.columns == ["customer_id", "customer_name", "route_id"]
-        assert len(result.rows) == 1
+                        assert result.success is True
+                        assert result.error is None
+                        assert result.columns == ["customer_id", "customer_name", "route_id"]
+                        assert len(result.rows) == 1
 
-    def test_execute_invalid_table(self, query_service):
+    def test_execute_invalid_table(self, mock_config, mock_pyodbc):
         """Invalid table should return error response."""
-        request = QueryRequest(table="forbidden_table")
-        result = query_service.execute(request)
+        with patch("agent.config.get_config", return_value=mock_config):
+            with patch("agent.query.PYODBC_AVAILABLE", True):
+                with patch("agent.query.pyodbc", mock_pyodbc):
+                    with patch("agent.query.check_pyodbc_available"):
+                        from agent.query import QueryService
 
-        assert result.success is False
-        assert "not in allowed tables" in result.error
+                        service = QueryService()
+                        service._conn = mock_pyodbc.connect("")
+
+                        request = QueryRequest(table="forbidden_table")
+                        result = service.execute(request)
+
+                        assert result.success is False
+                        assert "not in allowed tables" in result.error

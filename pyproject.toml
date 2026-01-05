@@ -10,11 +10,6 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Bailey Dixon" }]
-
-[tool.setuptools.packages.find]
-include = ["api*"]
-exclude = ["tests*", "agent*"]
-
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
@@ -44,6 +39,11 @@ dev = [
     "ruff",
     "pyright",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["api*"]
+exclude = ["tests*", "agent*"]
 
 [tool.ruff]
 line-length = 100
