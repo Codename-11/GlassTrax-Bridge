@@ -256,16 +256,23 @@ class QueryService:
         except ValueError as e:
             # Validation errors (bad table/column names)
             return QueryResponse(success=False, error=str(e))
-        except pyodbc.Error as e:
-            # Database errors
-            self._conn = None  # Reset connection on error
-            error_msg = str(e)
-            if hasattr(e, 'args') and len(e.args) > 1:
-                error_msg = e.args[1]
-            return QueryResponse(success=False, error=f"Database error: {error_msg}")
         except Exception as e:
-            # Unexpected errors
-            return QueryResponse(success=False, error=f"Unexpected error: {str(e)}")
+            # Check if this is a pyodbc error (pyodbc may be None in tests/CI)
+            is_pyodbc_error = (
+                pyodbc is not None
+                and hasattr(pyodbc, 'Error')
+                and isinstance(e, pyodbc.Error)
+            )
+            if is_pyodbc_error:
+                # Database errors
+                self._conn = None  # Reset connection on error
+                error_msg = str(e)
+                if hasattr(e, 'args') and len(e.args) > 1:
+                    error_msg = e.args[1]
+                return QueryResponse(success=False, error=f"Database error: {error_msg}")
+            else:
+                # Unexpected errors
+                return QueryResponse(success=False, error=f"Unexpected error: {str(e)}")
 
     def _convert_value(self, value: Any) -> Any:
         """Convert database values to JSON-serializable types"""

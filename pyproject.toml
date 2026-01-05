@@ -1,11 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "glasstrax-bridge"
 dynamic = ["version"]
 description = "Multi-tenant REST API for read-only access to GlassTrax ERP"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Bailey Dixon" }]
+
+[tool.setuptools.packages.find]
+include = ["api*"]
+exclude = ["tests*", "agent*"]
 
 dependencies = [
     "fastapi",
@@ -16,7 +24,7 @@ dependencies = [
     "python-dotenv",
     "sqlalchemy",
     "aiosqlite",
-    "python-jose[cryptography]",
+    "PyJWT",
     "passlib[bcrypt]",
     "python-multipart",
     "slowapi",
