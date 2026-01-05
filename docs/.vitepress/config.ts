@@ -14,7 +14,11 @@ export default defineConfig({
   ],
 
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon.svg' }],
+    ['meta', { name: 'theme-color', content: '#3b82f6' }],
+    ['meta', { property: 'og:title', content: 'GlassTrax Bridge' }],
+    ['meta', { property: 'og:description', content: 'REST API for GlassTrax ERP' }],
   ],
 
   themeConfig: {
@@ -84,8 +88,8 @@ export default defineConfig({
     ],
 
     footer: {
-      message: 'Internal Documentation',
-      copyright: 'GlassTrax Bridge'
+      message: 'REST API for GlassTrax ERP',
+      copyright: 'Copyright © 2025-2026 Axiom-Labs. All Rights Reserved.'
     },
 
     search: {

@@ -81,7 +81,21 @@ The admin key is only shown once. If lost, you'll need to create a new one via t
 
 ## Admin Password
 
-Configure the admin password in `config.yaml`:
+::: danger Security Warning
+The default admin password is `admin`. **Change it immediately** after first login!
+:::
+
+### Option 1: Change via Portal (Recommended)
+
+1. Login to the portal at `http://localhost:3000`
+2. Go to **Settings**
+3. Scroll to **Admin Password**
+4. Enter and confirm your new password
+5. Click **Save**
+
+### Option 2: Configure via config.yaml
+
+Set a bcrypt-hashed password in `config.yaml`:
 
 ```yaml
 admin:
@@ -89,11 +103,21 @@ admin:
   password_hash: "$2b$12$..."  # bcrypt hash
 ```
 
-Generate a hash:
+**Generate a password hash:**
+
 ```bash
-python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+# Using Python (Windows - use bundled python32)
+python32\python.exe -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+
+# Using Python (Linux/Mac)
+python3 -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+
+# Using Docker (no Python required)
+docker run --rm python:3.11-slim python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
 ```
 
-::: danger Default Password
-The default password is `admin`. Change this immediately in production!
-:::
+Replace `YOUR_PASSWORD` with your desired password. Copy the output (starts with `$2b$12$`) to `config.yaml`.
+
+### Option 3: Login with API Key
+
+You can also login using any admin API key (`gtb_...`) as the password. This is useful if you've forgotten the admin password but still have access to an admin API key.

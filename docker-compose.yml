@@ -1,34 +1,32 @@
 version: '3.8'
 
 # GlassTrax Bridge - Docker Compose
+# Documentation: https://codename-11.github.io/GlassTrax-Bridge/
+#
+# QUICK START:
+#   1. Copy .env.example to .env and configure
+#   2. docker-compose up -d
 #
 # The API runs inside the container and connects to a GlassTrax API Agent
 # running on Windows for database access.
-#
-# USAGE:
-#   # Basic (agent disabled - no GlassTrax access)
-#   docker-compose up -d
-#
-#   # With agent (connects to Windows agent for GlassTrax access)
-#   AGENT_URL=http://192.168.1.100:8001 AGENT_KEY=gta_xxx docker-compose up -d
 
 services:
   glasstrax-bridge:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
+    image: ghcr.io/codename-11/glasstrax-bridge:latest
+    # Or build locally:
+    # build:
+    #   context: .
+    #   dockerfile: docker/Dockerfile
     container_name: glasstrax-bridge
     ports:
-      # All traffic through nginx (portal, docs, API)
-      - "3000:80"
+      - "${PORT:-3000}:80"
     volumes:
       # Persist SQLite database
       - ./data:/app/data
-      # Mount config for runtime changes
-      - ./config.yaml:/app/config.yaml:ro
+      # Optional: Mount custom config
+      # - ./config.yaml:/app/config.yaml:ro
     environment:
       # GlassTrax API Agent Configuration
-      # Set these to connect to the Windows agent for GlassTrax access
       - GLASSTRAX_AGENT_ENABLED=${AGENT_ENABLED:-false}
       - GLASSTRAX_AGENT_URL=${AGENT_URL:-http://host.docker.internal:8001}
       - GLASSTRAX_AGENT_KEY=${AGENT_KEY:-}
@@ -44,28 +42,39 @@ services:
     restart: unless-stopped
 
 # =============================================================================
-# AGENT MODE SETUP
+# CONFIGURATION
 # =============================================================================
 #
-# To connect Docker to a Windows-hosted GlassTrax API Agent:
+# Option 1: Use .env file (recommended)
+#   Copy .env.example to .env and edit values
 #
-# 1. On Windows, start the agent:
-#    .\agent\run_agent.bat
-#    (Save the API key shown on first run)
+# Option 2: Set environment variables inline
+#   environment:
+#     - GLASSTRAX_AGENT_ENABLED=true
+#     - GLASSTRAX_AGENT_URL=http://192.168.1.100:8001
+#     - GLASSTRAX_AGENT_KEY=gta_your_key_here
 #
-# 2. Find your Windows IP:
-#    ipconfig
+# =============================================================================
+# FIRST RUN
+# =============================================================================
 #
-# 3. Start Docker with agent configuration:
-#    AGENT_ENABLED=true \
-#    AGENT_URL=http://192.168.1.100:8001 \
-#    AGENT_KEY=gta_your_key_here \
-#    docker-compose up -d
+# On first run, an admin API key is auto-generated and shown in the logs:
+#   docker logs glasstrax-bridge
 #
-# 4. Access:
-#    - Portal:    http://localhost:3000
-#    - Docs:      http://localhost:3000/docs
-#    - API:       http://localhost:3000/api/v1
-#    - Swagger:   http://localhost:3000/api/docs
+# Look for "INITIAL ADMIN API KEY GENERATED" - save this key!
+#
+# Default admin login:
+#   Username: admin
+#   Password: admin (CHANGE THIS via Settings page or config.yaml)
+#
+# =============================================================================
+# URLS
+# =============================================================================
+#
+# Portal:    http://localhost:3000
+# API:       http://localhost:3000/api/v1
+# Swagger:   http://localhost:3000/api/docs
+# Health:    http://localhost:3000/health
+# Docs:      https://codename-11.github.io/GlassTrax-Bridge/
 #
 # =============================================================================

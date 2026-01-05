@@ -29,38 +29,67 @@ The agent runs on port 8001 by default. Verify it's working:
 curl http://localhost:8001/health
 ```
 
-#### Step 2: Start Docker
+#### Step 2: Configure Docker Environment
 
-On your Docker host (can be the same machine or different):
+On your Docker host, create a `.env` file:
 
 ```bash
-# Pull the latest image
-docker pull ghcr.io/codename-11/glasstrax-bridge:latest
+# Copy the example environment file
+cp .env.example .env
 
-# Start with agent connection
-AGENT_ENABLED=true \
-AGENT_URL=http://YOUR_WINDOWS_IP:8001 \
-AGENT_KEY=gta_your_key_here \
+# Edit with your settings
+nano .env
+```
+
+Configure your `.env` file:
+
+```env
+# Enable agent mode
+AGENT_ENABLED=true
+
+# Windows machine IP running the agent
+AGENT_URL=http://192.168.1.100:8001
+
+# API key from agent first run (starts with gta_)
+AGENT_KEY=gta_your_key_here
+
+# Optional settings
+PORT=3000
+TZ=America/New_York
+```
+
+::: tip Finding Your Windows IP
+Run `ipconfig` on Windows to find the IPv4 address (e.g., 192.168.1.100)
+:::
+
+#### Step 3: Start Docker
+
+```bash
 docker-compose up -d
 ```
 
-Replace `YOUR_WINDOWS_IP` with the IP address of the Windows machine running the agent.
+#### Step 4: First Login
 
-#### Step 3: Access the Application
+Access the portal at `http://localhost:3000`
 
-- **Portal**: `http://localhost:3000`
-- **API**: `http://localhost:3000/api/v1`
-- **Swagger**: `http://localhost:3000/api/docs`
+**Default credentials:**
+- Username: `admin`
+- Password: `admin`
 
-On first run, an admin API key is auto-generated and displayed in the Docker logs:
+::: danger Change Default Password!
+The default password is insecure. Change it immediately after first login:
+1. Go to **Settings** in the portal
+2. Scroll to **Admin Password**
+3. Set a strong password
+:::
+
+Check the logs for the auto-generated admin API key:
 
 ```bash
 docker logs glasstrax-bridge
 ```
 
-::: tip
-Look for the "INITIAL ADMIN API KEY GENERATED" message. Save this key - it won't be shown again!
-:::
+Look for "INITIAL ADMIN API KEY GENERATED" - save this key!
 
 ---
 
@@ -133,11 +162,61 @@ On first run, an admin API key is auto-generated and displayed. **Save this key!
 
 ---
 
+## First-Time Setup
+
+### Change Default Password
+
+::: danger Security Warning
+The default admin password is `admin`. Change it immediately!
+:::
+
+**Option 1: Via Portal (Recommended)**
+1. Login to the portal
+2. Go to **Settings** → **Admin Password**
+3. Enter and confirm your new password
+
+**Option 2: Via config.yaml**
+
+Generate a bcrypt hash and add it to your config:
+
+```bash
+# Generate password hash
+python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+
+# Or using Docker
+docker run --rm python:3.11-slim python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+```
+
+Add the hash to `config.yaml`:
+
+```yaml
+admin:
+  username: "admin"
+  password_hash: "$2b$12$..."  # paste your hash here
+```
+
+### Save Your API Keys
+
+Two types of API keys are generated on first run:
+
+| Key Type | Prefix | Purpose |
+|----------|--------|---------|
+| Admin API Key | `gtb_` | Full API access, portal authentication |
+| Agent API Key | `gta_` | Agent-to-API communication only |
+
+Both are shown only once. Store them securely!
+
+---
+
 ## Verify Installation
 
 ### Health Check
 
 ```bash
+# Docker
+curl http://localhost:3000/health
+
+# Windows
 curl http://localhost:8000/health
 ```
 
@@ -145,7 +224,7 @@ Expected response:
 ```json
 {
   "status": "healthy",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "glasstrax_connected": true,
   "app_db_connected": true,
   "mode": "agent"
@@ -155,8 +234,46 @@ Expected response:
 ### Test API Access
 
 ```bash
-curl -H "X-API-Key: gtb_your_admin_key" http://localhost:8000/api/v1/customers?limit=1
+curl -H "X-API-Key: gtb_your_admin_key" http://localhost:3000/api/v1/customers?limit=1
 ```
+
+---
+
+## Docker Compose Reference
+
+Here's a complete `docker-compose.yml` example:
+
+```yaml
+version: '3.8'
+
+services:
+  glasstrax-bridge:
+    image: ghcr.io/codename-11/glasstrax-bridge:latest
+    container_name: glasstrax-bridge
+    ports:
+      - "${PORT:-3000}:80"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - GLASSTRAX_AGENT_ENABLED=${AGENT_ENABLED:-false}
+      - GLASSTRAX_AGENT_URL=${AGENT_URL:-http://host.docker.internal:8001}
+      - GLASSTRAX_AGENT_KEY=${AGENT_KEY:-}
+      - GLASSTRAX_AGENT_TIMEOUT=${AGENT_TIMEOUT:-30}
+      - TZ=${TZ:-America/New_York}
+    restart: unless-stopped
+```
+
+With `.env` file:
+
+```env
+AGENT_ENABLED=true
+AGENT_URL=http://192.168.1.100:8001
+AGENT_KEY=gta_your_key_here
+PORT=3000
+TZ=America/New_York
+```
+
+---
 
 ## Next Steps
 

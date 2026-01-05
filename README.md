@@ -44,26 +44,44 @@ Run Portal and API in Docker, with a Windows agent providing ODBC access. This i
 - Run installer and start agent from system tray
 - Save the API key shown on first run
 
-**Step 2:** Start Docker with agent connection
+**Step 2:** Configure environment
 ```bash
-AGENT_ENABLED=true \
-AGENT_URL=http://YOUR_WINDOWS_IP:8001 \
-AGENT_KEY=gta_your_key_here \
+# Copy the example environment file
+cp .env.example .env
+
+# Edit with your settings
+nano .env  # or use any text editor
+```
+
+Example `.env` file:
+```env
+AGENT_ENABLED=true
+AGENT_URL=http://192.168.1.100:8001
+AGENT_KEY=gta_your_key_here
+```
+
+**Step 3:** Start Docker
+```bash
 docker-compose up -d
 ```
 
-Access at `http://localhost:3000` (Docker), agent health at `http://WINDOWS_IP:8001/health`.
+**Step 4:** First-time setup
+```bash
+# View logs to get the auto-generated admin API key
+docker logs glasstrax-bridge
+```
+
+Access at `http://localhost:3000`. Default login: `admin` / `admin` (change this immediately!).
 
 ### Option B: Docker Standalone
 
 For testing without GlassTrax database access:
 
 ```bash
-docker pull ghcr.io/codename-11/glasstrax-bridge:latest
 docker-compose up -d
 ```
 
-Access at `http://localhost:3000`.
+Access at `http://localhost:3000`. No `.env` file needed for testing.
 
 ### Option C: Windows All-in-One (Beta)
 
@@ -140,16 +158,27 @@ Development server runs at `http://localhost:5173` with Vite proxying API reques
 
 ### Admin Portal Login
 
+> ⚠️ **Security Warning**: The default password is `admin`. Change it immediately after first login via the Settings page or by setting `password_hash` in `config.yaml`.
+
 Two authentication methods are supported:
 
-1. **Username/Password** - Configure in `config.yaml`:
+1. **Username/Password** - Default: `admin` / `admin`
+
+   Change via Settings page in the portal, or set a bcrypt hash in `config.yaml`:
    ```yaml
    admin:
      username: "admin"
-     # Generate: python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
-     password_hash: "$2b$12$..."
+     password_hash: "$2b$12$..."  # bcrypt hash
    ```
-   Default credentials (if no hash set): `admin` / `admin`
+
+   Generate a password hash:
+   ```bash
+   # Using Python (works on Windows with python32)
+   python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+
+   # Or using Docker
+   docker run --rm python:3.11-slim python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+   ```
 
 2. **API Key** - Use any admin API key (starting with `gtb_`) as the password
 

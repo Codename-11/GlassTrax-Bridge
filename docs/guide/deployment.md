@@ -12,13 +12,38 @@ Download `GlassTraxAPIAgent-X.X.X-Setup.exe` from [Releases](https://github.com/
 
 On first run, an API key will be generated and displayed. **Save it!**
 
-### Step 2: Start Docker with Agent Configuration
+### Step 2: Configure Environment
+
+Create a `.env` file with your agent settings:
 
 ```bash
-AGENT_ENABLED=true \
-AGENT_URL=http://YOUR_WINDOWS_IP:8001 \
-AGENT_KEY=gta_your_key_here \
+cp .env.example .env
+nano .env  # or use any editor
+```
+
+```env
+AGENT_ENABLED=true
+AGENT_URL=http://192.168.1.100:8001
+AGENT_KEY=gta_your_key_here
+PORT=3000
+TZ=America/New_York
+```
+
+### Step 3: Start Docker
+
+```bash
 docker-compose up -d
+```
+
+### Step 4: First Login
+
+- Access the portal at `http://localhost:3000`
+- Default login: `admin` / `admin`
+- **Change the default password immediately** via Settings
+
+Check logs for the auto-generated admin API key:
+```bash
+docker logs glasstrax-bridge
 ```
 
 ### Ports (Docker + Agent)
