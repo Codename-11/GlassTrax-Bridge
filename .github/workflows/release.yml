@@ -133,7 +133,7 @@ jobs:
             ## Downloads
 
             ### Windows Agent Installer
-            Download `GlassTraxAgent-${{ needs.validate.outputs.version }}-Setup.exe` below to install the GlassTrax Agent on Windows.
+            Download `GlassTraxAPIAgent-${{ needs.validate.outputs.version }}-Setup.exe` below to install the GlassTrax API Agent on Windows.
 
             The agent provides ODBC access to GlassTrax for Docker deployments.
 

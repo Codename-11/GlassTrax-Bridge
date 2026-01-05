@@ -1,5 +1,5 @@
 """
-GlassTrax Agent - Command Line Interface
+GlassTrax API Agent - Command Line Interface
 
 Entry point with support for different run modes:
 - --tray: System tray application (default for EXE)
@@ -50,7 +50,7 @@ def run_console_mode(host: str, port: Optional[int]) -> None:
 
     print()
     print("=" * 50)
-    print(f"  GlassTrax Agent v{__version__}")
+    print(f"  GlassTrax API Agent v{__version__}")
     print("=" * 50)
     print()
     print(f"  Host: {host}")
@@ -76,7 +76,7 @@ def main() -> int:
     multiprocessing.freeze_support()
 
     parser = argparse.ArgumentParser(
-        description="GlassTrax Agent - ODBC Query Service",
+        description="GlassTrax API Agent - ODBC Query Service",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -91,7 +91,7 @@ Examples:
         "--version",
         "-v",
         action="version",
-        version=f"GlassTrax Agent {__version__}",
+        version=f"GlassTrax API Agent {__version__}",
     )
 
     # Run modes (mutually exclusive)

@@ -12,7 +12,7 @@ GlassTrax Data Service
 Provides a service layer for accessing GlassTrax ERP data.
 Supports two modes:
 1. Direct ODBC - connects directly to Pervasive SQL (Windows only)
-2. Agent Mode - communicates with GlassTrax Agent via HTTP
+2. Agent Mode - communicates with GlassTrax API Agent via HTTP
 
 Tables:
 - customer (463 records) - Customer master data
@@ -66,7 +66,7 @@ class GlassTraxService:
     1. Direct ODBC (agent_client=None): Uses pyodbc for direct database access.
        Requires Windows with 32-bit Python and Pervasive ODBC driver.
     2. Agent Mode (agent_client provided): Uses HTTP client to communicate with
-       GlassTrax Agent running on Windows.
+       GlassTrax API Agent running on Windows.
     """
 
     def __init__(

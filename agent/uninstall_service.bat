@@ -1,14 +1,14 @@
 @echo off
-REM GlassTrax Agent - Windows Service Uninstaller
-REM Stops and removes the GlassTrax Agent Windows Service
+REM GlassTrax API Agent - Windows Service Uninstaller
+REM Stops and removes the GlassTrax API Agent Windows Service
 
 setlocal
 
-set SERVICE_NAME=GlassTraxAgent
+set SERVICE_NAME=GlassTraxAPIAgent
 
 echo.
 echo ========================================
-echo   GlassTrax Agent - Service Uninstaller
+echo   GlassTrax API Agent - Service Uninstaller
 echo ========================================
 echo.
 
@@ -50,7 +50,7 @@ echo ========================================
 echo   Service removed successfully!
 echo ========================================
 echo.
-echo The GlassTrax Agent service has been uninstalled.
+echo The GlassTrax API Agent service has been uninstalled.
 echo You can reinstall it with install_service.bat
 echo.
 

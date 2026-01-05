@@ -65,7 +65,7 @@ Override settings with environment variables:
 
 ## Agent Settings
 
-Configure connection to a Windows GlassTrax Agent for Docker deployments:
+Configure connection to a Windows GlassTrax API Agent for Docker deployments:
 
 ```yaml
 agent:
@@ -115,7 +115,7 @@ This allows everything except ODBC to run in containers while database queries a
    docker-compose up -d
    ```
 
-You can also configure these settings in the portal's Settings page under "GlassTrax Agent".
+You can also configure these settings in the portal's Settings page under "GlassTrax API Agent".
 
 ::: tip
 For detailed agent setup instructions, see [Agent Setup](/guide/agent-setup).

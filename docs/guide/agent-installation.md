@@ -1,12 +1,12 @@
 # Agent Installation
 
-The GlassTrax Agent is a Windows application that provides ODBC access to your GlassTrax database. It's required when running GlassTrax Bridge in Docker.
+The GlassTrax API Agent is a Windows application that provides ODBC access to your GlassTrax database. It's required when running GlassTrax Bridge in Docker.
 
 ## Download
 
 Download the latest installer from the [GitHub Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases) page.
 
-Look for `GlassTraxAgent-X.X.X-Setup.exe`.
+Look for `GlassTraxAPIAgent-X.X.X-Setup.exe`.
 
 ## Installation
 
@@ -27,7 +27,9 @@ To upgrade to a newer version:
 3. The agent will launch automatically after upgrade
 
 ::: tip Configuration Preserved
-Your `agent_config.yaml` and API key are stored in `%APPDATA%\GlassTrax Agent\` and are not affected by upgrades or reinstalls.
+Your `agent_config.yaml` and API key are stored in `%APPDATA%\GlassTrax API Agent\` and are not affected by upgrades or reinstalls.
+
+When uninstalling, you'll be asked if you want to remove these files. Choose **No** to keep your settings for a future reinstall, or **Yes** to completely remove all configuration.
 :::
 
 ## First Run
@@ -45,7 +47,7 @@ The API key is shown only once on first run. Save it securely - you'll need it t
 ## Configuration
 
 The agent configuration file is located at:
-- **Installed (Tray Mode)**: `%APPDATA%\GlassTrax Agent\agent_config.yaml`
+- **Installed (Tray Mode)**: `%APPDATA%\GlassTrax API Agent\agent_config.yaml`
 - **Manual/Development**: Same directory as the agent files
 
 The configuration is stored in AppData to avoid permission issues with Program Files.
@@ -149,10 +151,10 @@ For production, you can install the agent as a Windows Service:
 
 ```powershell
 # Start service
-sc start GlassTraxAgent
+sc start GlassTraxAPIAgent
 
 # Stop service
-sc stop GlassTraxAgent
+sc stop GlassTraxAPIAgent
 
 # Remove service
 .\agent\uninstall_service.bat
@@ -164,10 +166,10 @@ sc stop GlassTraxAgent
 
 1. Check that port 8001 is not in use
 2. Verify ODBC DSN is configured correctly
-3. Check the log file: `%APPDATA%\GlassTrax Agent\agent.log`
+3. Check the log file: `%APPDATA%\GlassTrax API Agent\agent.log`
 4. Run in console mode for detailed errors:
-   - Use "GlassTrax Agent (Console)" from Start Menu
-   - Or run: `"C:\Program Files\GlassTrax Agent\python\python.exe" -m agent.cli --console`
+   - Use "GlassTrax API Agent (Console)" from Start Menu
+   - Or run: `"C:\Program Files\GlassTrax API Agent\python\python.exe" -m agent.cli --console`
 
 ### Database connection failed
 
@@ -185,11 +187,26 @@ sc stop GlassTraxAgent
 
 Delete the `api_key_hash` line from `agent_config.yaml` and restart the agent. A new key will be generated.
 
+Alternatively, use the **Regenerate API Key** option from the system tray menu.
+
+### Complete Reset
+
+To start fresh with a new configuration:
+
+1. Uninstall the agent
+2. Choose **Yes** when asked to remove configuration files
+3. Reinstall the agent
+
+Or manually delete the folder:
+```powershell
+rmdir /s /q "%APPDATA%\GlassTrax API Agent"
+```
+
 ## Firewall Configuration
 
 If Docker is on a different machine, allow inbound connections:
 
 ```powershell
 # Allow port 8001 through Windows Firewall
-netsh advfirewall firewall add rule name="GlassTrax Agent" dir=in action=allow protocol=TCP localport=8001
+netsh advfirewall firewall add rule name="GlassTrax API Agent" dir=in action=allow protocol=TCP localport=8001
 ```

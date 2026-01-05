@@ -740,10 +740,10 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ServerIcon className="h-5 w-5" />
-            GlassTrax Agent
+            GlassTrax API Agent
           </CardTitle>
           <CardDescription>
-            Configure connection to Windows GlassTrax Agent for database access
+            Configure connection to Windows GlassTrax API Agent for database access
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -760,7 +760,7 @@ export function SettingsPage() {
             <div className="space-y-0.5">
               <Label>Enable Agent</Label>
               <p className="text-xs text-muted-foreground">
-                Connect to GlassTrax Agent for database queries
+                Connect to GlassTrax API Agent for database queries
               </p>
             </div>
             <Switch
@@ -780,7 +780,7 @@ export function SettingsPage() {
                   placeholder="http://192.168.1.100:8001"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Full URL of the Windows machine running the GlassTrax Agent
+                  Full URL of the Windows machine running the GlassTrax API Agent
                 </p>
               </div>
 

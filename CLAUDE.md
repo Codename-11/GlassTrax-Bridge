@@ -70,7 +70,7 @@ Port 3000: Portal `/`, Docs `/docs`, API `/api/v1` (no GlassTrax access)
 ### Docker + Windows Agent (Agent Mode)
 
 ```powershell
-# Windows: start the GlassTrax Agent (handles ODBC)
+# Windows: start the GlassTrax API Agent (handles ODBC)
 .\agent\run_agent.bat
 
 # Docker host: configure to use agent
@@ -79,7 +79,7 @@ AGENT_ENABLED=true AGENT_URL=http://192.168.1.100:8001 AGENT_KEY=gta_xxx docker-
 
 Port 3000: Portal + API with GlassTrax access via agent
 
-### GlassTrax Agent Only (Windows)
+### GlassTrax API Agent Only (Windows)
 
 ```powershell
 # Start agent for Docker/external API to connect
@@ -123,7 +123,7 @@ The installer includes:
 .\build_agent.ps1 -SkipInstaller
 ```
 
-Output: `dist/GlassTraxAgent-X.X.X-Setup.exe`
+Output: `dist/GlassTraxAPIAgent-X.X.X-Setup.exe`
 
 ### Automated Releases (GitHub Actions)
 
@@ -149,6 +149,13 @@ The workflow (`.github/workflows/release.yml`) will:
 2. Build Windows Agent installer
 3. Build and push Docker image to ghcr.io
 4. Create GitHub Release with EXE artifact
+
+### Documentation (GitHub Pages)
+
+Docs auto-deploy to GitHub Pages when `docs/` changes on main:
+- **URL:** https://codename-11.github.io/GlassTrax-Bridge/
+- **Workflow:** `.github/workflows/docs.yml`
+- **Base URL:** Set via `VITEPRESS_BASE=/GlassTrax-Bridge/` (different from app's `/docs/`)
 
 ### Docker Images
 
@@ -184,7 +191,7 @@ GlassTrax-Bridge/
 │   ├── middleware/           # Auth & request logging
 │   ├── services/             # GlassTrax data access + agent_client
 │   └── utils/                # Shared utilities (logger)
-├── agent/                    # GlassTrax Agent (Windows ODBC)
+├── agent/                    # GlassTrax API Agent (Windows ODBC)
 │   ├── main.py               # Agent FastAPI app
 │   ├── cli.py                # CLI entry point (--tray/--service/--console)
 │   ├── tray_app.py           # System tray application (pystray)
@@ -222,7 +229,8 @@ GlassTrax-Bridge/
 ├── build_agent.ps1           # Agent installer build script
 ├── BUILD_AGENT.bat           # Build wrapper
 ├── .github/workflows/        # GitHub Actions
-│   └── release.yml           # Automated release workflow
+│   ├── release.yml           # Automated release workflow
+│   └── docs.yml              # Deploy docs to GitHub Pages
 ├── build/                    # Build output (gitignored)
 ├── dist/                     # Installer output (gitignored)
 └── .build_cache/             # Python embed cache (gitignored)
@@ -248,7 +256,7 @@ admin:
 
 agent:
   enabled: false                    # Enable agent mode for Docker deployment
-  url: "http://localhost:8001"      # GlassTrax Agent URL
+  url: "http://localhost:8001"      # GlassTrax API Agent URL
   api_key: ""                       # Agent API key (gta_...)
   timeout: 30                       # Request timeout for agent queries
 ```
@@ -305,7 +313,7 @@ The portal has a Settings page (`/settings`) that allows editing config.yaml:
 - **Test DSN button** - Tests connection before saving, shows table count
 - **Read-Only Mode** - Enforced and disabled in UI (protects ERP data)
 - **Password change** - Update admin password via `/admin/change-password`
-- **Agent settings** - Configure GlassTrax Agent connection (url, api_key, timeout)
+- **Agent settings** - Configure GlassTrax API Agent connection (url, api_key, timeout)
 - **Test Agent button** - Tests agent connection before saving
 - **Docs link** - Quick access to VitePress documentation
 - Excludes sensitive fields (password_hash)
@@ -354,7 +362,7 @@ cd portal && npm run lint          # ESLint
 16. **API base URL** - Portal uses relative URLs (empty base), Vite proxies in dev, same-origin in prod
 17. **ruff for API** - Run `ruff check api/ --fix` and `ruff format api/` before committing
 18. **Agent mode** - When `agent.enabled=true`, API uses `AgentClient` to query Windows agent via HTTP
-19. **GlassTrax Agent** - Minimal FastAPI app in `agent/` that handles ODBC queries on Windows
+19. **GlassTrax API Agent** - Minimal FastAPI app in `agent/` that handles ODBC queries on Windows
 20. **Agent API key prefix** - Agent keys use `gta_` prefix (vs `gtb_` for main API)
 21. **pyodbc optional** - Not available in Docker; API gracefully handles missing pyodbc in agent mode
 22. **Extending the API** - See `docs-internal/EXTENDING.md` for adding new endpoints, models, and migrations
@@ -368,5 +376,6 @@ cd portal && npm run lint          # ESLint
 30. **Release workflow** - Push `vX.X.X` tag to trigger build + release on GitHub Actions
 31. **Docker registry** - Images published to `ghcr.io/codename-11/glasstrax-bridge`
 32. **Agent version** - Reads from VERSION file dynamically (not hardcoded)
-33. **Agent config location** - Installed mode uses `%APPDATA%\GlassTrax Agent\` for config and logs (avoids Program Files permission issues)
+33. **Agent config location** - Installed mode uses `%APPDATA%\GlassTrax API Agent\` for config and logs (avoids Program Files permission issues)
 34. **Agent logging** - Log file at `agent.log` in config dir, recreated on each run, accessible via tray menu "View Log File"
+35. **Docs workflow** - `.github/workflows/docs.yml` deploys to GitHub Pages on docs/ changes; uses `VITEPRESS_BASE=/GlassTrax-Bridge/`

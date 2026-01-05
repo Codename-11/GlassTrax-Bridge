@@ -1,5 +1,5 @@
 @echo off
-REM GlassTrax Agent - Manual Startup Script
+REM GlassTrax API Agent - Manual Startup Script
 REM Run this to start the agent manually (for development/testing)
 REM For production, use install_service.bat to run as Windows Service
 
@@ -7,7 +7,7 @@ cd /d "%~dp0.."
 
 echo.
 echo ========================================
-echo   GlassTrax Agent
+echo   GlassTrax API Agent
 echo ========================================
 echo.
 echo Starting agent on port 8001...

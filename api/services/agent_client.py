@@ -1,7 +1,7 @@
 """
-GlassTrax Agent Client
+GlassTrax API Agent Client
 
-HTTP client for communicating with the GlassTrax Agent.
+HTTP client for communicating with the GlassTrax API Agent.
 Used when running in agent mode (Docker deployment).
 """
 
@@ -41,7 +41,7 @@ class AgentQueryError(Exception):
 
 class AgentClient:
     """
-    HTTP client for the GlassTrax Agent.
+    HTTP client for the GlassTrax API Agent.
 
     Provides methods to execute queries and check health of the agent.
     Uses connection pooling for performance.

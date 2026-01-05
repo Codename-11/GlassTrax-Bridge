@@ -22,9 +22,9 @@ def check_pyodbc_available() -> None:
     """Raise helpful error if pyodbc is not installed"""
     if not PYODBC_AVAILABLE:
         raise ImportError(
-            "pyodbc is not installed. The GlassTrax Agent requires pyodbc to connect to the database.\n\n"
+            "pyodbc is not installed. The GlassTrax API Agent requires pyodbc to connect to the database.\n\n"
             "To install pyodbc, open a command prompt and run:\n"
-            '  "C:\\Program Files\\GlassTrax Agent\\python\\python.exe" -m pip install pyodbc\n\n'
+            '  "C:\\Program Files\\GlassTrax API Agent\\python\\python.exe" -m pip install pyodbc\n\n'
             "Note: You also need the Pervasive ODBC driver installed on this system."
         )
 

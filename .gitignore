@@ -68,8 +68,8 @@ build/
 dist/
 .build_cache/
 
-# Bundled Python (large - download separately or use system Python)
-python32/
+# Bundled Python - included in repo for easy setup
+# python32/
 
 # Secrets
 *.pem

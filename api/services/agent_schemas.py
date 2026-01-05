@@ -2,7 +2,7 @@
 Agent Request/Response Schemas (API Side)
 
 These schemas mirror the agent's schemas and are used by the AgentClient
-to communicate with the GlassTrax Agent.
+to communicate with the GlassTrax API Agent.
 """
 
 from typing import Any, Literal

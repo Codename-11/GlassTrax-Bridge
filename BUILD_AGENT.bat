@@ -1,9 +1,9 @@
 @echo off
 REM ============================================
-REM GlassTrax Agent - Build Installer
+REM GlassTrax API Agent - Build Installer
 REM ============================================
 REM
-REM This script builds a standalone Windows installer for the GlassTrax Agent.
+REM This script builds a standalone Windows installer for the GlassTrax API Agent.
 REM
 REM Prerequisites:
 REM   - Inno Setup 6 (https://jrsoftware.org/isdl.php)
@@ -17,7 +17,7 @@ REM ============================================
 
 echo.
 echo ========================================
-echo   GlassTrax Agent - Build Installer
+echo   GlassTrax API Agent - Build Installer
 echo ========================================
 echo.
 

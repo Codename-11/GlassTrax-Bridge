@@ -34,7 +34,7 @@ def get_glasstrax_service() -> Generator[GlassTraxService, None, None]:
 
     Supports two modes based on config.yaml:
     1. Agent Mode (agent.enabled=true): Uses AgentClient to communicate
-       with GlassTrax Agent on Windows
+       with GlassTrax API Agent on Windows
     2. Direct Mode (agent.enabled=false): Uses pyodbc for direct ODBC access
        (requires Windows with 32-bit Python)
 

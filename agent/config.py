@@ -23,7 +23,7 @@ def get_config_dir() -> Path:
     """
     Get the config directory.
 
-    Uses %APPDATA%/GlassTrax Agent on Windows for user-writable storage.
+    Uses %APPDATA%/GlassTrax API Agent on Windows for user-writable storage.
     Falls back to install directory for development/portable mode.
     """
     # Check if running from Program Files (installed mode)
@@ -34,7 +34,7 @@ def get_config_dir() -> Path:
         # Use AppData for installed mode (user-writable)
         appdata = os.environ.get("APPDATA")
         if appdata:
-            config_dir = Path(appdata) / "GlassTrax Agent"
+            config_dir = Path(appdata) / "GlassTrax API Agent"
             config_dir.mkdir(parents=True, exist_ok=True)
             return config_dir
 
@@ -54,6 +54,7 @@ class AgentConfig:
         self._config: dict[str, Any] = {}
         self._yaml = YAML()
         self._yaml.preserve_quotes = True
+        self._new_api_key: str | None = None  # Set if key was just generated
         self.load()
 
     def load(self) -> None:
@@ -114,13 +115,15 @@ class AgentConfig:
         with open(config_path, "w", encoding="utf-8") as f:
             self._yaml.dump(self._config, f)
 
-        # Print the key ONCE - user must save it
+        # Store for tray app to retrieve and log/notify
+        self._new_api_key = api_key
+
+        # Also print to console (for console mode)
         print("\n" + "=" * 60)
         print("GLASSTRAX AGENT - FIRST RUN")
         print("=" * 60)
         print("\nA new API key has been generated. SAVE THIS KEY!")
-        print("It will only be shown once.\n")
-        print(f"  Agent API Key: {api_key}")
+        print(f"\n  Agent API Key: {api_key}")
         print("\nConfigure this key in your main API's config.yaml:")
         print("  agent:")
         print("    enabled: true")
@@ -167,6 +170,42 @@ class AgentConfig:
             return bcrypt.checkpw(key.encode(), stored_hash.encode())
         except Exception:
             return False
+
+    def regenerate_api_key(self) -> str:
+        """
+        Generate a new API key, save the hash, and return the plain key.
+
+        Returns:
+            The new API key (plain text) - only chance to see it!
+        """
+        config_path = get_config_path()
+
+        # Generate a secure random key with prefix
+        raw_key = secrets.token_urlsafe(32)
+        api_key = f"gta_{raw_key}"
+
+        # Hash the key for storage
+        key_hash = bcrypt.hashpw(api_key.encode(), bcrypt.gensalt()).decode()
+
+        # Update config
+        if "agent" not in self._config:
+            self._config["agent"] = {}
+        self._config["agent"]["api_key_hash"] = key_hash
+
+        # Save to file
+        with open(config_path, "w", encoding="utf-8") as f:
+            self._yaml.dump(self._config, f)
+
+        return api_key
+
+    def get_new_api_key(self) -> str | None:
+        """
+        Get newly generated API key (first run only).
+        Returns the key and clears it so it's only returned once.
+        """
+        key = self._new_api_key
+        self._new_api_key = None
+        return key
 
     @property
     def dsn(self) -> str:

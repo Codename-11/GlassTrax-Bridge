@@ -6,8 +6,9 @@ This guide will help you set up and start using GlassTrax Bridge.
 
 - **Windows Server** with GlassTrax installed
 - **Pervasive ODBC Driver** (32-bit)
-- **Python 3.11 32-bit** (bundled in `python32/` or install separately)
 - **Node.js 18+** (for portal development)
+
+Python 3.11 32-bit is bundled in `python32/` - no separate installation needed.
 
 ## Installation
 

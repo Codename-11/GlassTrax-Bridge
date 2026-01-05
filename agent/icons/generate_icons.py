@@ -1,5 +1,5 @@
 """
-Generate tray icons for GlassTrax Agent
+Generate tray icons for GlassTrax API Agent
 
 Creates icons matching the GlassTrax Bridge branding with the "bridge" design.
 Different states are indicated by the center bridge color.

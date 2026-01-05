@@ -8,6 +8,13 @@
 A multi-tenant API platform for secure, read-only access to GlassTrax ERP data via Pervasive SQL.
 </p>
 
+<p align="center">
+  <a href="https://github.com/Codename-11/GlassTrax-Bridge/actions"><img src="https://img.shields.io/github/actions/workflow/status/Codename-11/GlassTrax-Bridge/release.yml?label=Build" alt="Build"></a>
+  <a href="https://github.com/Codename-11/GlassTrax-Bridge/releases"><img src="https://img.shields.io/github/v/release/Codename-11/GlassTrax-Bridge?label=Release" alt="Release"></a>
+  <a href="https://ghcr.io/codename-11/glasstrax-bridge"><img src="https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker" alt="Docker"></a>
+  <a href="https://codename-11.github.io/GlassTrax-Bridge/"><img src="https://img.shields.io/badge/Docs-GitHub%20Pages-blue?logo=gitbook" alt="Docs"></a>
+</p>
+
 ## Features
 
 - **REST API Server** - FastAPI-based API with OpenAPI documentation
@@ -22,88 +29,112 @@ A multi-tenant API platform for secure, read-only access to GlassTrax ERP data v
 - **Dark Mode** - Light/dark/system theme support in portal
 - **Read-Only Access** - Safe querying without data modification risk
 
+<p align="center">
+  <img src="assets/screenshots/glasstrax_bridge_main_dashboard.png" alt="GlassTrax Bridge Dashboard" width="75%">
+</p>
+
 ## Installation
+
+### Option A: Windows All-in-One (Recommended)
+
+Run everything directly on Windows with full GlassTrax ODBC access.
+
+**Prerequisites:**
+- Windows with Pervasive ODBC Client configured
+- Python 3.11 32-bit (bundled in `python32/`)
+- Node.js 18+
+
+```powershell
+# Clone and setup
+git clone https://github.com/Codename-11/GlassTrax-Bridge.git
+cd GlassTrax-Bridge
+
+# Install Python dependencies
+python32\python.exe -m pip install -r requirements.txt
+
+# Configure
+copy config.example.yaml config.yaml
+notepad config.yaml  # Set your DSN
+
+# Initialize database
+python32\python.exe -m alembic upgrade head
+
+# Start production server (builds portal/docs automatically)
+.\run_prod.bat
+```
+
+Access at `http://localhost:8000` (Portal, Docs, API all on one port).
+
+### Option B: Docker + Windows Agent
+
+Run Portal and API in Docker, with a Windows agent providing ODBC access.
+
+**Step 1:** Install the GlassTrax API Agent on Windows
+- Download `GlassTraxAPIAgent-X.X.X-Setup.exe` from [Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases)
+- Run installer and start agent from system tray
+- Save the API key shown on first run
+
+**Step 2:** Start Docker with agent connection
+```bash
+AGENT_ENABLED=true \
+AGENT_URL=http://YOUR_WINDOWS_IP:8001 \
+AGENT_KEY=gta_your_key_here \
+docker-compose up -d
+```
+
+Access at `http://localhost:3000` (Docker), agent health at `http://WINDOWS_IP:8001/health`.
+
+### Option C: Docker Standalone
+
+For testing without GlassTrax database access:
+
+```bash
+docker pull ghcr.io/codename-11/glasstrax-bridge:latest
+docker-compose up -d
+```
+
+Access at `http://localhost:3000`.
+
+### URLs by Deployment
+
+| Deployment | Portal | Docs | API | Swagger |
+|------------|--------|------|-----|---------|
+| Windows (run_prod.bat) | :8000 | :8000/docs | :8000/api/v1 | :8000/api/docs |
+| Docker | :3000 | :3000/docs | :3000/api/v1 | :3000/api/docs |
+
+## Development Setup
+
+For local development with hot-reload:
 
 ### Prerequisites
 
 - **Windows** (for GlassTrax ODBC access)
-- **Python 3.11 32-bit** (required for Pervasive ODBC driver)
-- **Node.js 18+** (for admin portal and docs)
-- **Pervasive ODBC Client** installed and configured
+- **Node.js 18+**
+- **Pervasive ODBC Client** configured
 
-### 1. Clone Repository
+Python 3.11 32-bit is bundled in `python32/` - no separate installation needed.
+
+### Quick Start
 
 ```powershell
+# Clone and install dependencies
 git clone https://github.com/Codename-11/GlassTrax-Bridge.git
 cd GlassTrax-Bridge
-```
-
-### 2. Set Up Python Environment
-
-Download and extract 32-bit Python 3.11 to `python32/` directory, or use your system Python (must be 32-bit).
-
-```powershell
-# Install Python dependencies
 python32\python.exe -m pip install -r requirements.txt
-```
-
-### 3. Configure Application
-
-```powershell
-# Copy example configs
-copy config.example.yaml config.yaml
-copy agent_config.example.yaml agent_config.yaml
-
-# Edit config.yaml with your settings
-notepad config.yaml
-```
-
-Key settings in `config.yaml`:
-- `database.dsn` - Your ODBC Data Source Name (configured in Windows ODBC Administrator 32-bit)
-- `database.friendly_name` - Display name for the UI
-- `admin.password_hash` - Set a secure password hash for production
-
-### 4. Initialize Database
-
-```powershell
-# Run database migrations
-python32\python.exe -m alembic upgrade head
-```
-
-### 5. Start Development Server
-
-```powershell
-# One-click start (API + Portal + Docs)
-.\run_dev.bat
-
-# Or use npm
 npm install
-npm run dev
+
+# Configure
+copy config.example.yaml config.yaml
+notepad config.yaml  # Set your DSN
+
+# Initialize database
+python32\python.exe -m alembic upgrade head
+
+# Start dev server with hot-reload
+.\run_dev.bat
 ```
 
-On first startup, an admin API key is auto-generated:
-
-```
-======================================================================
-  INITIAL ADMIN API KEY GENERATED
-======================================================================
-
-  Key: gtb_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-  IMPORTANT: Save this key now! It will NOT be shown again.
-  This key has full admin permissions.
-
-======================================================================
-```
-
-### 6. Access the Application
-
-| URL | Description |
-|-----|-------------|
-| http://localhost:5173 | Admin Portal |
-| http://localhost:5173/docs | User Documentation |
-| http://localhost:5173/api/docs | API Reference (Swagger) |
-| http://localhost:5173/api/v1/* | REST API endpoints |
+Development server runs at `http://localhost:5173` with Vite proxying API requests.
 
 ## Authentication
 
@@ -161,7 +192,7 @@ GlassTrax-Bridge/
 │   ├── services/             # GlassTrax data access
 │   ├── middleware/           # Auth & request logging
 │   └── utils/                # Shared utilities
-├── agent/                    # GlassTrax Agent (for Docker deployments)
+├── agent/                    # GlassTrax API Agent (for Docker deployments)
 │   ├── run_agent.bat         # Start agent manually
 │   └── install_service.bat   # Install as Windows Service
 ├── portal/                   # React admin portal (Vite + shadcn)
@@ -230,7 +261,7 @@ Portal on `:3000` (no GlassTrax ODBC access - use Agent Mode)
 
 Best option: Docker runs full API + portal, Windows runs minimal agent for ODBC access.
 
-**Step 1: On Windows** - Start the GlassTrax Agent:
+**Step 1: On Windows** - Start the GlassTrax API Agent:
 ```powershell
 .\agent\run_agent.bat
 ```

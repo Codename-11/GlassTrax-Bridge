@@ -116,7 +116,7 @@ If Docker handles the portal and API, but you need Windows for ODBC access:
 .\agent\run_agent.bat
 ```
 
-This starts the GlassTrax Agent on port 8001. See [Agent Setup](/guide/agent-setup) for details.
+This starts the GlassTrax API Agent on port 8001. See [Agent Setup](/guide/agent-setup) for details.
 
 ## Docker + Windows Agent Mode
 

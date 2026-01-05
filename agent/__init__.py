@@ -1,5 +1,5 @@
 """
-GlassTrax Agent
+GlassTrax API Agent
 
 Minimal ODBC query service for GlassTrax ERP.
 Runs on Windows with 32-bit Python for Pervasive ODBC driver compatibility.

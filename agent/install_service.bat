@@ -1,5 +1,5 @@
 @echo off
-REM GlassTrax Agent - Windows Service Installation
+REM GlassTrax API Agent - Windows Service Installation
 REM Uses NSSM (Non-Sucking Service Manager) to install agent as Windows Service
 REM
 REM Prerequisites:
@@ -15,12 +15,12 @@ setlocal
 
 cd /d "%~dp0.."
 set PROJECT_DIR=%CD%
-set SERVICE_NAME=GlassTraxAgent
+set SERVICE_NAME=GlassTraxAPIAgent
 set PYTHON_PATH=%PROJECT_DIR%\python32\python.exe
 
 echo.
 echo ========================================
-echo   GlassTrax Agent - Service Installer
+echo   GlassTrax API Agent - Service Installer
 echo ========================================
 echo.
 echo Project Directory: %PROJECT_DIR%
@@ -62,8 +62,8 @@ REM Install service
 
 REM Configure service
 %NSSM_PATH% set %SERVICE_NAME% AppDirectory "%PROJECT_DIR%"
-%NSSM_PATH% set %SERVICE_NAME% Description "GlassTrax Agent - ODBC Query Service for GlassTrax ERP"
-%NSSM_PATH% set %SERVICE_NAME% DisplayName "GlassTrax Agent"
+%NSSM_PATH% set %SERVICE_NAME% Description "GlassTrax API Agent - ODBC Query Service for GlassTrax ERP"
+%NSSM_PATH% set %SERVICE_NAME% DisplayName "GlassTrax API Agent"
 %NSSM_PATH% set %SERVICE_NAME% Start SERVICE_AUTO_START
 
 REM Configure restart on failure

@@ -1,5 +1,5 @@
 """
-GlassTrax Agent - Main Application
+GlassTrax API Agent - Main Application
 
 Minimal FastAPI service for ODBC query execution.
 Runs on Windows with 32-bit Python for Pervasive driver compatibility.
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan - startup and shutdown"""
     # Startup
     config = get_config()
-    print(f"GlassTrax Agent v{__version__} starting on port {config.port}")
+    print(f"GlassTrax API Agent v{__version__} starting on port {config.port}")
     print(f"DSN: {config.dsn} (readonly: {config.readonly})")
     print(f"Allowed tables: {', '.join(config.allowed_tables)}")
 
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
         print("WARNING: pyodbc is not installed!")
         print("Database queries will fail until pyodbc is installed.")
         print("\nTo install, run:")
-        print('  "C:\\Program Files\\GlassTrax Agent\\python\\python.exe" -m pip install pyodbc')
+        print('  "C:\\Program Files\\GlassTrax API Agent\\python\\python.exe" -m pip install pyodbc')
         print("!" * 60 + "\n")
 
     yield
@@ -39,12 +39,12 @@ async def lifespan(app: FastAPI):
     # Shutdown
     service = get_query_service()
     service.close()
-    print("GlassTrax Agent stopped")
+    print("GlassTrax API Agent stopped")
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="GlassTrax Agent",
+    title="GlassTrax API Agent",
     description="Minimal ODBC query service for GlassTrax ERP",
     version=__version__,
     lifespan=lifespan,

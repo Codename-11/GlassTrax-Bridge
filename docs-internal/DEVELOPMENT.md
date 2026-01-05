@@ -215,7 +215,7 @@ GlassTrax-Bridge/
 ├── docker-compose.yml       # Container orchestration
 ├── run_dev.bat              # One-click dev startup
 ├── run_prod.bat             # Windows production
-├── agent/                   # GlassTrax Agent (for Docker)
+├── agent/                   # GlassTrax API Agent (for Docker)
 │   └── run_agent.bat        # Start agent
 ├── VERSION                  # Central version file
 └── requirements.txt         # Python dependencies
@@ -314,7 +314,7 @@ API runs in container but won't have GlassTrax ODBC access.
 
 Best of both worlds: Docker runs full API + portal, Windows runs minimal agent for ODBC access.
 
-**Step 1:** On Windows, start the GlassTrax Agent:
+**Step 1:** On Windows, start the GlassTrax API Agent:
 ```powershell
 .\agent\run_agent.bat
 ```
@@ -374,7 +374,7 @@ The API will automatically pick up the new version on restart.
 
 ## Building Agent Installer
 
-The GlassTrax Agent can be packaged as a standalone Windows installer with system tray support.
+The GlassTrax API Agent can be packaged as a standalone Windows installer with system tray support.
 
 ### Prerequisites
 
@@ -404,7 +404,7 @@ The script will:
 4. Generate Inno Setup script
 5. Compile the installer
 
-Output: `dist/GlassTraxAgent-X.X.X-Setup.exe`
+Output: `dist/GlassTraxAPIAgent-X.X.X-Setup.exe`
 
 ### Agent Run Modes
 
@@ -424,11 +424,45 @@ Output: `dist/GlassTraxAgent-X.X.X-Setup.exe`
 
 ### Agent Configuration & Logs
 
-When installed, the agent stores configuration and logs in `%APPDATA%\GlassTrax Agent\`:
+When installed, the agent stores configuration and logs in `%APPDATA%\GlassTrax API Agent\`:
 - `agent_config.yaml` - Configuration file
 - `agent.log` - Log file (recreated on each run)
 
 Access via tray menu: "Open Config Folder" or "View Log File".
+
+## CI/CD Workflows
+
+GitHub Actions workflows in `.github/workflows/`:
+
+### Release Workflow (`release.yml`)
+
+Triggered on version tags (`v*.*.*`):
+
+1. Validates VERSION file matches tag
+2. Builds Windows Agent installer
+3. Builds and pushes Docker image to ghcr.io
+4. Creates GitHub Release with artifacts
+
+```powershell
+# Trigger a release
+echo "1.2.0" > VERSION
+cd portal && npm run sync-version
+cd ../docs && npm run sync-version
+git add -A && git commit -m "chore: release v1.2.0"
+git tag v1.2.0
+git push origin main --tags
+```
+
+### Docs Workflow (`docs.yml`)
+
+Triggered on changes to `docs/` on main branch:
+
+1. Builds VitePress with GitHub Pages base URL
+2. Deploys to GitHub Pages
+
+**Live docs:** https://codename-11.github.io/GlassTrax-Bridge/
+
+> **Note:** GitHub Pages uses base URL `/GlassTrax-Bridge/` while the bundled app uses `/docs/`. The VitePress config reads `VITEPRESS_BASE` env var to handle this.
 
 ### Regenerating Icons
 

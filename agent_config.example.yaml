@@ -1,4 +1,4 @@
-# GlassTrax Agent Configuration
+# GlassTrax API Agent Configuration
 # Copy this file to agent_config.yaml before first run
 #
 # cp agent_config.example.yaml agent_config.yaml

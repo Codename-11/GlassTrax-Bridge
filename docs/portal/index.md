@@ -45,6 +45,8 @@ Overview of your GlassTrax Bridge instance:
 - Active/total API keys
 - Recent API requests
 
+![Dashboard](/screenshots/glasstrax_bridge_main_dashboard.png)
+
 ### API Keys
 
 Create and manage API keys:
@@ -57,9 +59,13 @@ Create and manage API keys:
 The full API key is only shown once at creation. Copy it immediately!
 :::
 
+![API Keys](/screenshots/glasstrax_bridge_api_keys_layout.png)
+
 ### Applications
 
 Organize your API keys by application or integration.
+
+![Applications](/screenshots/glasstrax_bridge_applications_layout.png)
 
 ### Access Logs
 
@@ -71,6 +77,19 @@ Real-time view of all API requests with:
 - API key used
 
 Auto-refreshes every 5 seconds.
+
+![Access Logs](/screenshots/glasstrax_bridge_access_layout.png)
+
+### Settings
+
+Configure GlassTrax Bridge from the portal:
+
+- **Database connection** - DSN, friendly name, and timeout
+- **Admin credentials** - Change admin password
+- **Agent configuration** - Connect to Windows GlassTrax API Agent
+- **Application settings** - Timezone and logging options
+
+![Settings](/screenshots/glasstrax_bridge_settings_layout.png)
 
 ### Diagnostics
 
@@ -84,3 +103,5 @@ System health monitoring:
 **Server Controls:**
 - Restart Server button
 - Database Reset (danger zone)
+
+![Diagnostics](/screenshots/glasstrax_bridge_diag_layout.png)

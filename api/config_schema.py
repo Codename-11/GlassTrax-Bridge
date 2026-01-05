@@ -100,11 +100,11 @@ class AdminConfig(BaseModel):
 
 
 class AgentConfig(BaseModel):
-    """GlassTrax Agent connection configuration"""
+    """GlassTrax API Agent connection configuration"""
 
     enabled: bool = Field(
         default=False,
-        description="Use GlassTrax Agent for database queries (required in Docker)",
+        description="Use GlassTrax API Agent for database queries (required in Docker)",
     )
     url: str = Field(
         default="http://localhost:8001",

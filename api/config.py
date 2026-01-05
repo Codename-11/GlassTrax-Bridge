@@ -137,8 +137,8 @@ admin:
   # password_hash: "$2b$12$..."  # Generate with: python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
   # Leave password_hash commented out to use default password 'admin'
 
-# GlassTrax Agent Settings
-# Configure connection to Windows-based GlassTrax Agent for database access
+# GlassTrax API Agent Settings
+# Configure connection to Windows-based GlassTrax API Agent for database access
 agent:
   # Enable agent mode (required when running in Docker)
   enabled: false

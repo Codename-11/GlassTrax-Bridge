@@ -1,6 +1,6 @@
-# GlassTrax Agent Setup
+# GlassTrax API Agent Setup
 
-The GlassTrax Agent is a minimal service that runs on Windows to provide ODBC access to the GlassTrax database. It allows Docker deployments to query GlassTrax data via HTTP.
+The GlassTrax API Agent is a minimal service that runs on Windows to provide ODBC access to the GlassTrax database. It allows Docker deployments to query GlassTrax data via HTTP.
 
 ## Prerequisites
 
@@ -50,7 +50,7 @@ Download [NSSM](https://nssm.cc/) and place `nssm.exe` in your PATH or in the pr
 .\agent\install_service.bat
 ```
 
-This creates a Windows service called `GlassTraxAgent` that:
+This creates a Windows service called `GlassTraxAPIAgent` that:
 - Starts automatically on boot
 - Runs under the Local System account
 - Logs to `data\agent.log`
@@ -65,13 +65,13 @@ This creates a Windows service called `GlassTraxAgent` that:
 
 ```powershell
 # Start the service
-net start GlassTraxAgent
+net start GlassTraxAPIAgent
 
 # Stop the service
-net stop GlassTraxAgent
+net stop GlassTraxAPIAgent
 
 # Check status
-sc query GlassTraxAgent
+sc query GlassTraxAPIAgent
 ```
 
 ## Configuration
@@ -223,7 +223,7 @@ agent:
 
 ## Logs
 
-- **Tray Mode**: Logs written to `%APPDATA%\GlassTrax Agent\agent.log`
+- **Tray Mode**: Logs written to `%APPDATA%\GlassTrax API Agent\agent.log`
 - **Console Mode**: Logs appear in console
 - **Service**: Logs written to `data\agent.log`
 

@@ -50,15 +50,15 @@ admin:
   # Leave commented to use default password 'admin' (CHANGE IN PRODUCTION!)
   # password_hash: "$2b$12$..."
 
-# GlassTrax Agent Settings
-# Configure connection to Windows-based GlassTrax Agent for database access
+# GlassTrax API Agent Settings
+# Configure connection to Windows-based GlassTrax API Agent for database access
 # Required when running in Docker (no direct ODBC access)
 agent:
   # Enable agent mode
   # When enabled, the API connects to a Windows agent for database queries
   enabled: false
 
-  # Agent URL - Full URL of the Windows machine running the GlassTrax Agent
+  # Agent URL - Full URL of the Windows machine running the GlassTrax API Agent
   # Example: "http://192.168.1.100:8001" or "http://windows-server.local:8001"
   url: "http://localhost:8001"
 

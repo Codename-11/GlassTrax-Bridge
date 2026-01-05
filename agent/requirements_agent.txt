@@ -1,4 +1,4 @@
-# GlassTrax Agent - Minimal Dependencies
+# GlassTrax API Agent - Minimal Dependencies
 # These are bundled with the standalone installer
 # For development, use the main requirements.txt
 

@@ -1,5 +1,5 @@
 """
-GlassTrax Agent - System Tray Application
+GlassTrax API Agent - System Tray Application
 
 Provides a system tray icon with start/stop controls and status monitoring.
 Uses pystray for cross-platform system tray support.
@@ -23,20 +23,17 @@ from agent.config import get_config, get_config_dir
 
 def setup_logging() -> Path:
     """
-    Configure logging to a file that recreates on each run.
+    Configure logging to a persistent file with session separators.
     Returns the log file path.
     """
     log_dir = get_config_dir()
     log_file = log_dir / "agent.log"
 
-    # Clear log file on each run
-    log_file.write_text("")
-
-    # Configure root logger
+    # Configure root logger (append mode - keep history)
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%m/%d/%y - %I:%M %p",
         handlers=[
             logging.FileHandler(log_file, mode="a", encoding="utf-8"),
         ],
@@ -49,7 +46,7 @@ def setup_logging() -> Path:
 
 
 class AgentTray:
-    """System tray application for GlassTrax Agent"""
+    """System tray application for GlassTrax API Agent"""
 
     # Icon states
     STATE_STOPPED = "stopped"
@@ -65,10 +62,26 @@ class AgentTray:
         self._log_file = setup_logging()
         self._logger = logging.getLogger("agent.tray")
 
+        # Log session start separator
+        self._logger.info("=" * 50)
+        self._logger.info(f"GlassTrax API Agent v{__version__} starting")
+        self._logger.info("=" * 50)
+
+        # Check for first-run API key generation
+        new_key = self._config.get_new_api_key()
+        if new_key:
+            self._logger.info("-" * 40)
+            self._logger.info("FIRST RUN - API KEY GENERATED")
+            self._logger.info(f"API Key: {new_key}")
+            self._logger.info("Save this key! View Log File to see it again.")
+            self._logger.info("-" * 40)
+            # Store for notification after icon is ready
+            self._first_run_key = new_key
+        else:
+            self._first_run_key = None
+
         # Load icons
         self._icons = self._load_icons()
-
-        self._logger.info(f"GlassTrax Agent v{__version__} initialized")
 
     def _load_icons(self) -> dict:
         """Load tray icons from icons/ directory or generate defaults"""
@@ -159,6 +172,7 @@ class AgentTray:
                 enabled=False,
             ),
             Menu.SEPARATOR,
+            MenuItem("Regenerate API Key", self._regenerate_api_key),
             MenuItem("Open Config Folder", self._open_config_folder),
             MenuItem("View Log File", self._open_log),
             MenuItem("Exit", self._exit),
@@ -198,7 +212,7 @@ class AgentTray:
 
             self._set_state(self.STATE_RUNNING)
             self._logger.info(f"Agent started successfully on port {self._config.port}")
-            self._notify("GlassTrax Agent Started", f"Listening on port {self._config.port}")
+            self._notify("GlassTrax API Agent Started", f"Listening on port {self._config.port}")
 
         except Exception as e:
             self._logger.exception("Failed to start agent")
@@ -224,7 +238,7 @@ class AgentTray:
             self._server_thread = None
             self._set_state(self.STATE_STOPPED)
             self._logger.info("Agent stopped")
-            self._notify("GlassTrax Agent Stopped", "Agent has been stopped")
+            self._notify("GlassTrax API Agent Stopped", "Agent has been stopped")
 
         except Exception as e:
             self._logger.exception("Error stopping agent")
@@ -254,6 +268,49 @@ class AgentTray:
         """Open API docs in browser"""
         webbrowser.open(f"http://localhost:{self._config.port}/docs")
 
+    def _copy_to_clipboard(self, text: str) -> bool:
+        """Copy text to clipboard (Windows only)"""
+        if sys.platform != "win32":
+            return False
+        try:
+            import ctypes
+            CF_UNICODETEXT = 13
+            kernel32 = ctypes.windll.kernel32
+            user32 = ctypes.windll.user32
+
+            user32.OpenClipboard(0)
+            user32.EmptyClipboard()
+
+            # Allocate global memory
+            hMem = kernel32.GlobalAlloc(0x0042, (len(text) + 1) * 2)
+            pMem = kernel32.GlobalLock(hMem)
+            ctypes.cdll.msvcrt.wcscpy(ctypes.c_wchar_p(pMem), text)
+            kernel32.GlobalUnlock(hMem)
+
+            user32.SetClipboardData(CF_UNICODETEXT, hMem)
+            user32.CloseClipboard()
+            return True
+        except Exception:
+            return False
+
+    def _regenerate_api_key(self, icon, item) -> None:
+        """Regenerate the API key and copy to clipboard"""
+        try:
+            new_key = self._config.regenerate_api_key()
+            self._logger.info("-" * 40)
+            self._logger.info("API KEY REGENERATED")
+            self._logger.info(f"New Key: {new_key}")
+            self._logger.info("-" * 40)
+
+            # Copy to clipboard
+            if self._copy_to_clipboard(new_key):
+                self._notify("API Key Regenerated", "New key copied to clipboard! (Also logged)")
+            else:
+                self._notify("API Key Regenerated", f"Key: {new_key[:20]}...")
+        except Exception as e:
+            self._logger.exception("Failed to regenerate API key")
+            self._notify("Error", f"Failed to regenerate key: {e}")
+
     def _open_config_folder(self, icon, item) -> None:
         """Open the config folder in explorer"""
         config_path = get_config_dir()
@@ -280,9 +337,9 @@ class AgentTray:
     def run(self, auto_start: bool = True) -> None:
         """Run the tray application"""
         self._icon = Icon(
-            "GlassTrax Agent",
+            "GlassTrax API Agent",
             self._icons[self.STATE_STOPPED],
-            "GlassTrax Agent",
+            "GlassTrax API Agent",
             menu=self._create_menu(),
         )
 
@@ -293,6 +350,16 @@ class AgentTray:
                 icon.icon = self._icons[self.STATE_RUNNING]
                 icon.visible = True
                 self._start_agent()
+
+                # Show first-run API key notification
+                if self._first_run_key:
+                    if self._copy_to_clipboard(self._first_run_key):
+                        self._notify("First Run - API Key Generated",
+                                   "Key copied to clipboard! Also saved to log file.")
+                    else:
+                        self._notify("First Run - API Key Generated",
+                                   "Check log file for your API key.")
+                    self._first_run_key = None
 
             self._icon.run(setup=on_ready)
         else:

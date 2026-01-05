@@ -1321,7 +1321,7 @@ class TestAgentResponse(BaseModel):
     "/test-agent",
     response_model=APIResponse[TestAgentResponse],
     summary="Test agent connection",
-    description="Test connection to a GlassTrax Agent to verify it's reachable and authenticated",
+    description="Test connection to a GlassTrax API Agent to verify it's reachable and authenticated",
 )
 async def test_agent(
     data: TestAgentRequest,
@@ -1329,7 +1329,7 @@ async def test_agent(
     _: None = Depends(require_admin),
 ) -> APIResponse[TestAgentResponse]:
     """
-    Test connection to a GlassTrax Agent.
+    Test connection to a GlassTrax API Agent.
 
     Attempts to connect to the specified agent URL and verify:
     - Agent is reachable
