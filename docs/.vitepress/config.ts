@@ -88,7 +88,7 @@ export default defineConfig({
     ],
 
     footer: {
-      message: 'REST API for GlassTrax ERP',
+      message: 'GlassTrax Bridge is an independent third-party tool. GlassTrax is a trademark of Kimzey Software Solutions. Not affiliated with or endorsed by Kimzey Software Solutions.',
       copyright: 'Copyright © 2025-2026 Axiom-Labs. All Rights Reserved.'
     },
 

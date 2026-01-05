@@ -69,6 +69,7 @@ typeCheckingMode = "basic"
 exclude = ["python32", ".venv", "venv"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "agent/tests"]
 asyncio_mode = "auto"
-addopts = "-v --cov=api --cov-report=term-missing"
+addopts = "-v --cov-report=term-missing"
+asyncio_default_fixture_loop_scope = "function"

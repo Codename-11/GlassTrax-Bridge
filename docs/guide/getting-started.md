@@ -209,15 +209,24 @@ The default admin password is `admin`. Change it immediately!
 
 **Option 2: Via config.yaml**
 
-Generate a bcrypt hash and add it to your config:
+Generate a bcrypt hash using the tool below (no Python required):
 
+<PasswordHasher />
+
+Or use the command line:
+
+::: details Command Line Options
 ```bash
-# Generate password hash
-python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+# Using Python (Windows - bundled python32)
+python32\python.exe -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
 
-# Or using Docker
+# Using Python (Linux/Mac)
+python3 -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+
+# Using Docker (no Python required)
 docker run --rm python:3.11-slim python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
 ```
+:::
 
 Add the hash to `config.yaml`:
 

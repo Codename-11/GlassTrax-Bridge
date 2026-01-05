@@ -229,9 +229,19 @@ GlassTrax-Bridge/
 ├── run_prod.bat              # Production build & run
 ├── build_agent.ps1           # Agent installer build script
 ├── BUILD_AGENT.bat           # Build wrapper
+├── tests/                    # API tests (pytest)
+│   ├── conftest.py           # Shared fixtures
+│   ├── fixtures/             # Test data and factories
+│   ├── mocks/                # pyodbc and agent mocks
+│   ├── unit/                 # Unit tests
+│   └── integration/          # Router integration tests
+├── tools/                    # Development utilities
+│   ├── inspect.bat           # DSN inspection wrapper
+│   └── inspect_dsn.py        # Database schema explorer
 ├── .github/workflows/        # GitHub Actions
 │   ├── release.yml           # Automated release workflow
-│   └── docs.yml              # Deploy docs to GitHub Pages
+│   ├── docs.yml              # Deploy docs to GitHub Pages
+│   └── test.yml              # CI tests on push/PR
 ├── build/                    # Build output (gitignored)
 ├── dist/                     # Installer output (gitignored)
 └── .build_cache/             # Python embed cache (gitignored)
@@ -319,6 +329,53 @@ The portal has a Settings page (`/settings`) that allows editing config.yaml:
 - **Docs link** - Quick access to VitePress documentation
 - Excludes sensitive fields (password_hash)
 
+## Testing
+
+```powershell
+# Run all tests
+npm run test
+
+# Run specific test suites
+npm run test:api          # API tests (pytest)
+npm run test:agent        # Agent tests (pytest)
+npm run test:portal       # Portal tests (Vitest)
+
+# Run with coverage
+npm run test:coverage     # All with coverage reports
+
+# Portal test modes
+cd portal
+npm run test              # Run once
+npm run test:watch        # Watch mode
+npm run test:ui           # Vitest UI
+```
+
+**Test Structure:**
+```
+tests/                    # API tests
+├── conftest.py           # Shared fixtures
+├── fixtures/             # Test data and factories
+├── mocks/                # pyodbc and agent mocks
+├── unit/                 # Unit tests
+└── integration/          # Router integration tests
+
+agent/tests/              # Agent tests
+├── conftest.py           # Agent fixtures
+├── mocks/                # pyodbc mocks
+└── test_*.py             # Test files
+
+portal/src/
+├── __tests__/            # Test utilities and MSW mocks
+├── lib/__tests__/        # API client tests
+└── pages/__tests__/      # Page component tests
+```
+
+**Key Mocking Patterns:**
+- **pyodbc**: Mocked via `tests/mocks/mock_pyodbc.py` (Windows ODBC not available in CI)
+- **GlassTraxService**: Override via FastAPI dependency injection
+- **Portal API calls**: MSW intercepts all axios/fetch requests
+- **SQLite**: In-memory database per test for isolation
+
 ## Development Tooling
 
 ```powershell
@@ -382,3 +439,10 @@ cd portal && npm run lint          # ESLint
 35. **Docs workflow** - `.github/workflows/docs.yml` deploys to GitHub Pages on docs/ changes; uses `VITEPRESS_BASE=/GlassTrax-Bridge/`
 36. **Docs URL** - https://codename-11.github.io/GlassTrax-Bridge/ (all docs links should point here)
 37. **Docker + Agent recommended** - Production deployments should use Docker + Windows Agent method
+38. **Testing infrastructure** - pytest for API/agent, Vitest + MSW for portal
+39. **CI workflow** - `.github/workflows/test.yml` runs all tests on push/PR
+40. **pyodbc mocking** - Tests mock pyodbc since it's Windows-only; see `tests/mocks/mock_pyodbc.py`
+41. **Test fixtures** - API fixtures in `tests/conftest.py`, agent in `agent/tests/conftest.py`
+42. **Portal test utilities** - Custom render with providers in `portal/src/__tests__/test-utils.tsx`
+43. **MSW handlers** - Mock API responses in `portal/src/__tests__/mocks/handlers.ts`
+44. **DSN inspection tool** - Use `tools\inspect.bat` to explore GlassTrax database schema (tables, columns, sample data)

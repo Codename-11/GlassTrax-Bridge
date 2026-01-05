@@ -10,7 +10,11 @@
     "preview": "vitepress preview",
     "sync-version": "node -e \"const v=require('fs').readFileSync('../VERSION','utf8').trim();const p=require('./package.json');p.version=v;require('fs').writeFileSync('./package.json',JSON.stringify(p,null,2)+'\\n')\""
   },
+  "dependencies": {
+    "bcryptjs": "^2.4.3"
+  },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "vitepress": "^1.5.0"
   }
 }

@@ -47,10 +47,19 @@ admin:
   # password_hash: "$2b$12$..."  # bcrypt hash (optional)
 ```
 
-Generate a password hash:
+**Generate a password hash:**
+
+<PasswordHasher />
+
+::: details Command Line Options
 ```bash
+# Using Python
 python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+
+# Using Docker
+docker run --rm python:3.11-slim python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
 ```
+:::
 
 ## Environment Variables
 

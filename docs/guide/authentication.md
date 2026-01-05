@@ -105,6 +105,11 @@ admin:
 
 **Generate a password hash:**
 
+Use the interactive tool below (no Python required - runs entirely in your browser):
+
+<PasswordHasher />
+
+::: details Command Line Options
 ```bash
 # Using Python (Windows - use bundled python32)
 python32\python.exe -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
@@ -115,8 +120,8 @@ python3 -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt(
 # Using Docker (no Python required)
 docker run --rm python:3.11-slim python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
 ```
-
 Replace `YOUR_PASSWORD` with your desired password. Copy the output (starts with `$2b$12$`) to `config.yaml`.
+:::
 
 ### Option 3: Login with API Key
 

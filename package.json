@@ -10,7 +10,15 @@
     "dev:docs": "cd docs && npx vitepress dev --port 5174",
     "build": "npm run build:portal",
     "build:portal": "cd portal && npm run build",
-    "build:docs": "cd docs && npm run build"
+    "build:docs": "cd docs && npm run build",
+    "test": "npm run test:api && npm run test:agent && npm run test:portal",
+    "test:api": "python32\\python.exe -m pytest tests/ -v",
+    "test:agent": "python32\\python.exe -m pytest agent/tests/ -v",
+    "test:portal": "cd portal && npm run test",
+    "test:coverage": "npm run test:api:cov && npm run test:agent:cov && npm run test:portal:cov",
+    "test:api:cov": "python32\\python.exe -m pytest tests/ -v --cov=api --cov-report=html:coverage/api",
+    "test:agent:cov": "python32\\python.exe -m pytest agent/tests/ -v --cov=agent --cov-report=html:coverage/agent",
+    "test:portal:cov": "cd portal && npm run test:coverage"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

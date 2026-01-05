@@ -13,6 +13,12 @@ For the main project README, see [../README.md](../README.md).
 | [PORTAL.md](./PORTAL.md) | Admin portal guide |
 | [EXTENDING.md](./EXTENDING.md) | Adding new endpoints, models, and migrations |
 
+## Reference
+
+| Document | Description |
+|----------|-------------|
+| [GLASSTRAX-DATABASE.md](./GLASSTRAX-DATABASE.md) | GlassTrax ERP database schema and Pervasive SQL quirks |
+
 ## User-Facing Documentation
 
 VitePress documentation site is located in `docs/`:

@@ -381,6 +381,10 @@ Starts all services in a single terminal with color-coded output.
 - **Read-only database** - All GlassTrax connections are read-only by design
 - **Config files gitignored** - `config.yaml` and `agent_config.yaml` contain secrets
 
+## Disclaimer
+
+GlassTrax Bridge is an independent third-party tool. GlassTrax is a trademark of Kimzey Software Solutions. This product is not affiliated with, endorsed by, or sponsored by Kimzey Software Solutions.
+
 ## License
 
 Copyright (c) 2025-2026 Axiom-Labs. All Rights Reserved.

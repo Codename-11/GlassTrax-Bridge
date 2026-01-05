@@ -71,6 +71,21 @@ dist/
 # Bundled Python - included in repo for easy setup
 # python32/
 
+# Test dependencies installed in python32 (not needed in repo)
+python32/Lib/site-packages/pytest*/
+python32/Lib/site-packages/_pytest/
+python32/Lib/site-packages/pytest_*/
+python32/Lib/site-packages/coverage*/
+python32/Lib/site-packages/pluggy*/
+python32/Lib/site-packages/iniconfig*/
+python32/Lib/site-packages/pygments*/
+python32/Lib/site-packages/py.py
+python32/Lib/site-packages/*coverage*
+python32/Scripts/pytest*.exe
+python32/Scripts/py.test.exe
+python32/Scripts/coverage*.exe
+python32/Scripts/pygmentize.exe
+
 # Secrets
 *.pem
 *.key

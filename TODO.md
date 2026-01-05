@@ -39,6 +39,44 @@ Settings are defined but not wired to actual query execution:
 
 **To implement:** Update `api/services/glasstrax.py` to read these settings and apply them to database operations.
 
+## API Enhancement: TGI Web Apps Integration
+
+Enhancements needed to support TGI Web Apps remake form autofill and order validation.
+
+### Phase 1: Enhanced Order Line Details
+- [ ] Add glass product fields to order line response:
+  - `overall_thickness` - from `sales_order_detail`
+  - `pattern` - from `sales_order_detail`
+- [ ] Add `has_fab` boolean - check if `so_processing` has FAB process_group
+- [ ] Add `edgework` string - description from `processing_charges` where process_group='EDGE'
+- [ ] Update `agent_config.yaml` to allow: `so_processing`, `processing_charges`, `inventory_items`
+
+### Phase 2: Field Selection (Optional Enhancement)
+- [ ] Add `fields` query parameter to `/orders/{so_no}` endpoint
+- [ ] Allow sparse responses: `?fields=so_no,customer_name,line_items`
+- [ ] Maintain API key permissions at endpoint level (not field level)
+
+### Phase 3: Order Validation Endpoint
+- [ ] Add `GET /api/v1/orders/{so_no}/exists` - lightweight validation
+- [ ] Return: `{ exists: bool, customer_id?, customer_name? }`
+
+### Data Model Reference
+
+**Processing tables needed:**
+- `so_processing` (928K rows) - links order lines to processing operations
+- `processing_charges` (345 rows) - defines process types (CUT, EDGE, FAB, SHAPE, TEMP)
+
+**Query to get fab/edgework:**
+```sql
+SELECT p.so_no, p.so_line_no, pc.process_group, pc.description
+FROM so_processing p
+JOIN processing_charges pc ON p.process_id = pc.processing_id
+WHERE p.so_no = ? AND p.so_line_no = ?
+  AND pc.process_group IN ('FAB', 'EDGE')
+```
+
+See `docs-internal/GLASSTRAX-DATABASE.md` for full schema reference.
+
 ## Future Considerations
 
 1. **Wire up logging config** - Low effort, high value. Read config and pass to logger setup.

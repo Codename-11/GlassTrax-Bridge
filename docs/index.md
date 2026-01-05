@@ -105,6 +105,7 @@ Follow the [Getting Started guide](/guide/getting-started) for step-by-step inst
 
 ---
 
-<div style="text-align: center; margin-top: 2rem; color: #666;">
+<div style="text-align: center; margin-top: 2rem; color: #666; font-size: 0.85rem;">
+  <p style="margin-bottom: 0.5rem;">GlassTrax Bridge is an independent third-party tool. GlassTrax is a trademark of Kimzey Software Solutions.<br>This product is not affiliated with, endorsed by, or sponsored by Kimzey Software Solutions.</p>
   <p>Copyright © 2025-2026 Axiom-Labs. All Rights Reserved.</p>
 </div>

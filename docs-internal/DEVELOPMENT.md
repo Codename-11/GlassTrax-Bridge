@@ -218,8 +218,60 @@ GlassTrax-Bridge/
 ├── agent/                   # GlassTrax API Agent (for Docker)
 │   └── run_agent.bat        # Start agent
 ├── VERSION                  # Central version file
-└── requirements.txt         # Python dependencies
+├── requirements.txt         # Python dependencies
+└── tools/                   # Development utilities
+    ├── inspect.bat          # DSN inspection wrapper
+    └── inspect_dsn.py       # Database schema explorer
 ```
+
+## Database Exploration Tools
+
+The `tools/` directory contains utilities for exploring the GlassTrax Pervasive database.
+
+### DSN Inspection Tool
+
+Explore database schema and data via CLI. Outputs JSON by default with optional human-readable preview.
+
+```powershell
+# Use the wrapper (recommended)
+tools\inspect.bat tables                    # List all tables
+tools\inspect.bat tables --filter customer  # Filter by name
+tools\inspect.bat schema customer           # Show table schema
+tools\inspect.bat schema customer -s        # Include sample values
+tools\inspect.bat sample orders --limit 5   # Sample rows
+tools\inspect.bat sample orders -f status=O # Filter by column value
+tools\inspect.bat search order              # Search tables/columns
+tools\inspect.bat columns customer          # Quick column list
+
+# Add --pretty for human-readable preview + JSON
+tools\inspect.bat schema customer --pretty
+```
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `tables` | List all tables (optionally filter with `--filter`) |
+| `schema <table>` | Show columns, types, nullable. Add `-s` for sample values |
+| `sample <table>` | Fetch sample rows. Use `-l N` for limit, `-f col=val` for filters |
+| `search <keyword>` | Find tables/columns matching keyword |
+| `columns <table>` | Quick column list without sampling |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--dsn NAME` | Use specific DSN (default: from config.yaml) |
+| `--pretty` | Human-readable preview + JSON output |
+| `--filter`, `-f` | Filter results by pattern or column value |
+| `--sample-values`, `-s` | Include distinct values for columns (schema cmd) |
+| `--limit`, `-l` | Number of rows to sample (default: 10) |
+
+**Use Cases:**
+- Discovering table names when extending the API
+- Understanding column types before adding new endpoints
+- Finding tables/columns containing specific keywords
+- Sampling data to understand formats and relationships
 
 ## Troubleshooting
 
