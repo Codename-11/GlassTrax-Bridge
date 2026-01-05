@@ -15,11 +15,10 @@ Loads settings from .env file and config.yaml.
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
-from pydantic_settings import BaseSettings
-import yaml
 import bcrypt
+import yaml
+from pydantic_settings import BaseSettings
 
 
 def get_project_root() -> Path:
@@ -151,12 +150,9 @@ agent:
 """
 
 
-def load_yaml_config(config_path: str = None) -> dict:
+def load_yaml_config(config_path: str | None = None) -> dict:
     """Load configuration from YAML file, creating default if missing"""
-    if config_path is None:
-        config_file = get_project_root() / "config.yaml"
-    else:
-        config_file = Path(config_path)
+    config_file = get_project_root() / "config.yaml" if config_path is None else Path(config_path)
 
     if not config_file.exists():
         # Create default config file
@@ -164,7 +160,7 @@ def load_yaml_config(config_path: str = None) -> dict:
             f.write(DEFAULT_CONFIG)
         print(f"Created default configuration file: {config_path}")
 
-    with open(config_file, "r", encoding="utf-8") as f:
+    with open(config_file, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
@@ -198,7 +194,7 @@ class AdminSettings:
         admin_config = config.get("admin", {})
 
         self.username: str = admin_config.get("username", "admin")
-        self.password_hash: Optional[str] = admin_config.get("password_hash")
+        self.password_hash: str | None = admin_config.get("password_hash")
 
         # If no password hash set, create a default one (for initial setup)
         if not self.password_hash:

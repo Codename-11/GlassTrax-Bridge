@@ -27,8 +27,9 @@ export function LoginPage() {
     try {
       await login(username, password)
       navigate('/')
-    } catch (err: any) {
-      setError(err.message || 'Invalid credentials')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Invalid credentials'
+      setError(message)
     } finally {
       setIsLoading(false)
     }

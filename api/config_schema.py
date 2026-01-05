@@ -5,7 +5,7 @@ Pydantic models for validating config.yaml structure.
 Provides clear error messages when configuration is invalid.
 """
 
-from typing import List, Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -75,10 +75,10 @@ class ApplicationConfig(BaseModel):
             from zoneinfo import ZoneInfo
 
             ZoneInfo(v)
-        except Exception:
+        except Exception as e:
             raise ValueError(
                 f"Invalid timezone '{v}'. Use IANA format like 'America/New_York' or 'UTC'"
-            )
+            ) from e
         return v
 
 
@@ -93,7 +93,7 @@ class AdminConfig(BaseModel):
     """Admin portal authentication"""
 
     username: str = Field(default="admin", min_length=1, description="Admin username")
-    password_hash: Optional[str] = Field(
+    password_hash: str | None = Field(
         default=None,
         description="bcrypt password hash (leave empty for default 'admin')",
     )
@@ -154,7 +154,7 @@ def validate_config(config_dict: dict) -> AppConfig:
     return AppConfig.model_validate(config_dict)
 
 
-def get_validation_errors(config_dict: dict) -> List[str]:
+def get_validation_errors(config_dict: dict) -> list[str]:
     """
     Get a list of validation errors for a config dictionary.
 
@@ -213,10 +213,10 @@ class EditableApplicationConfig(BaseModel):
         try:
             from zoneinfo import ZoneInfo
             ZoneInfo(v)
-        except Exception:
+        except Exception as e:
             raise ValueError(
                 f"Invalid timezone '{v}'. Use IANA format like 'America/New_York' or 'UTC'"
-            )
+            ) from e
         return v
 
 

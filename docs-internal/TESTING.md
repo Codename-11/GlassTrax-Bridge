@@ -336,3 +336,100 @@ All jobs must pass for the PR to be mergeable.
 | Agent query service | 85%+ |
 | Portal API client | 80%+ |
 | Portal pages | 70%+ |
+
+## Troubleshooting CI Failures
+
+### Common Issues
+
+#### "Tests pass locally but fail in CI"
+
+**Root cause:** Environment differences between local dev and CI (Ubuntu).
+
+**Prevention:** Always test with a fresh venv before pushing:
+
+```powershell
+# Create fresh venv matching CI
+python -m venv .venv-ci-test
+
+# API: Install exactly as CI does
+.venv-ci-test\Scripts\pip install -e ".[dev]"
+.venv-ci-test\Scripts\python -m pytest tests/ -v
+
+# Agent: Install exactly as CI does
+python -m venv .venv-ci-agent
+.venv-ci-agent\Scripts\pip install pytest pytest-cov pytest-asyncio fastapi uvicorn pydantic ruamel.yaml bcrypt httpx
+set PYTHONPATH=%CD%
+.venv-ci-agent\Scripts\python -m pytest agent/tests/ -v
+
+# Clean up
+rmdir /s /q .venv-ci-test .venv-ci-agent
+```
+
+#### pyproject.toml TOML Structure Errors
+
+**Symptom:** `pip install -e ".[dev]"` fails with setuptools validation errors.
+
+**Common causes:**
+- TOML section ordering matters - keys belong to the section header above them
+- `dependencies` array must be under `[project]`, not `[tool.setuptools.packages.find]`
+- The `[tool.setuptools.packages.find]` section requires `where` to be an array
+
+**Correct structure:**
+```toml
+[project]
+name = "glasstrax-bridge"
+dependencies = [...]  # Must be here, under [project]
+
+[project.optional-dependencies]
+dev = [...]
+
+[tool.setuptools.packages.find]
+where = ["."]         # Required
+include = ["api*"]
+exclude = ["tests*"]
+```
+
+#### Agent Tests Fail with pyodbc Errors
+
+**Symptom:** `AttributeError: 'NoneType' object has no attribute 'Error'`
+
+**Cause:** pyodbc is None in CI (not installed), but code tries to catch `pyodbc.Error`.
+
+**Solution:** Patches must be active during test execution, not just fixture creation:
+
+```python
+# Wrong - patches end when fixture returns
+@pytest.fixture
+def service(mock_pyodbc):
+    with patch("module.pyodbc", mock_pyodbc):
+        return QueryService()  # Patches end here!
+
+# Right - keep patches active during test
+def test_query(mock_config, mock_pyodbc):
+    with patch("agent.query.pyodbc", mock_pyodbc):
+        with patch("agent.query.check_pyodbc_available"):
+            service = QueryService()
+            result = service.execute(request)  # Patches still active
+            assert result.success
+```
+
+#### Module Import Order Issues
+
+**Symptom:** `AttributeError: module 'X' has no attribute 'Y'`
+
+**Cause:** Module-level imports happen before patches are applied.
+
+**Solution:** Use `patch.dict("sys.modules", {...})` to inject mocks before import:
+
+```python
+with patch.dict("sys.modules", {"pyodbc": mock_pyodbc}):
+    from agent.main import app  # Now imports mocked pyodbc
+```
+
+### Best Practices
+
+1. **Test with fresh venv** before pushing significant changes
+2. **Check pyproject.toml TOML structure** with an online validator
+3. **Keep patches active** during the entire test, not just setup
+4. **Use `continue-on-error: true`** for non-blocking checks (lint, format, types)
+5. **Set PYTHONPATH** in CI for agent tests: `env: PYTHONPATH: ${{ github.workspace }}`

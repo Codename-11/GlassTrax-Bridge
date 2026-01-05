@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If login endpoint fails, check if password looks like an API key
       // and try using it directly (fallback for API key auth)
       if (password.startsWith('gtb_') || password.includes('-key-')) {
@@ -112,7 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           delete api.defaults.headers.common['X-API-Key']
         }
       }
-      throw new Error(error.response?.data?.detail || 'Invalid credentials')
+      // Extract error message from axios error or use default
+      const axiosError = error as { response?: { data?: { detail?: string } } }
+      throw new Error(axiosError.response?.data?.detail || 'Invalid credentials')
     }
   }
 
