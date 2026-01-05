@@ -1,10 +1,6 @@
-### Description ###
-# GlassTrax-Bridge - Python Interface for GlassTrax ERP
-# - FastAPI Application Entry Point -
-# Author: Bailey Dixon
-# Date: 01/03/2026
-# Python: 3.11
-####################
+# GlassTrax Bridge - API Server
+# Copyright (c) 2025-2026 Axiom-Labs. All Rights Reserved.
+# See LICENSE file for details.
 
 """
 GlassTrax Bridge API - Main Application
@@ -352,13 +348,8 @@ app.include_router(
 
 
 # Mount static files for production (when built assets exist)
-# Portal at root, VitePress docs at /docs
+# Documentation hosted on GitHub Pages: https://codename-11.github.io/GlassTrax-Bridge/
 _portal_dist = Path(__file__).parent.parent / "portal" / "dist"
-_docs_dist = Path(__file__).parent.parent / "docs" / ".vitepress" / "dist"
-
-if _docs_dist.exists():
-    # Mount VitePress user docs at /docs (Swagger is at /api/docs)
-    app.mount("/docs", StaticFiles(directory=str(_docs_dist), html=True), name="docs")
 
 if _portal_dist.exists():
     # Serve portal static assets
@@ -368,8 +359,8 @@ if _portal_dist.exists():
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_portal(full_path: str):
         """Serve portal SPA - fallback for client-side routing"""
-        # Don't serve for API routes or docs
-        if full_path.startswith(("api/", "docs", "health")):
+        # Don't serve for API routes
+        if full_path.startswith(("api/", "health")):
             return JSONResponse({"error": "Not found"}, status_code=404)
 
         index_file = _portal_dist / "index.html"

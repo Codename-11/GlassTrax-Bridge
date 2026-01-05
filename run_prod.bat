@@ -1,6 +1,7 @@
 @echo off
 REM GlassTrax Bridge - Windows Production Server
-REM Builds portal and docs, then runs API serving everything
+REM Builds portal, then runs API serving everything
+REM Documentation hosted on GitHub Pages: https://codename-11.github.io/GlassTrax-Bridge/
 
 cd /d "%~dp0"
 
@@ -30,11 +31,6 @@ if not exist "portal\node_modules" (
     pushd portal && npm install && popd
 )
 
-if not exist "docs\node_modules" (
-    echo Installing docs dependencies...
-    pushd docs && npm install && popd
-)
-
 REM Build portal
 echo.
 echo Building portal...
@@ -49,29 +45,15 @@ if %ERRORLEVEL% neq 0 (
 popd
 echo Portal built successfully.
 
-REM Build docs
-echo.
-echo Building VitePress docs...
-pushd docs
-call npm run build
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Docs build failed
-    popd
-    pause
-    exit /b 1
-)
-popd
-echo Docs built successfully.
-
 echo.
 echo ===================================
 echo  Starting Production Server
 echo ===================================
 echo.
 echo   Portal:       http://localhost:8000
-echo   User Docs:    http://localhost:8000/docs
 echo   API:          http://localhost:8000/api/v1
 echo   Swagger:      http://localhost:8000/api/docs
+echo   Docs:         https://codename-11.github.io/GlassTrax-Bridge/
 echo.
 echo Press Ctrl+C to stop
 echo.

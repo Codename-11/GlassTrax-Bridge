@@ -1,3 +1,7 @@
+# GlassTrax API Agent
+# Copyright (c) 2025-2026 Axiom-Labs. All Rights Reserved.
+# See LICENSE file for details.
+
 """
 GlassTrax API Agent
 

@@ -29,7 +29,7 @@ cd ../docs && npm run sync-version
 ## Quick Start (Windows)
 
 ```powershell
-# One-click development (API + Portal + Docs in single terminal)
+# One-click development (API + Portal in single terminal)
 .\run_dev.bat
 
 # Or use npm directly
@@ -41,23 +41,26 @@ npm install && npm run dev
 | URL | Description |
 |-----|-------------|
 | http://localhost:5173 | Portal (main UI) |
-| http://localhost:5173/docs | User Documentation |
 | http://localhost:5173/api/docs | API Reference (Swagger) |
 | http://localhost:5173/api/v1/* | REST API endpoints |
 | http://localhost:5173/health | Health check |
 
-Vite proxies `/api`, `/docs`, and `/health` to their respective backend services.
+Documentation: https://codename-11.github.io/GlassTrax-Bridge/
+
+Vite proxies `/api` and `/health` to the backend API.
 Uses `concurrently` for color-coded output. `Ctrl+C` stops all.
 
 ## Production Deployment
 
-### Windows (recommended for GlassTrax ODBC)
+### Docker + Windows Agent (Recommended)
 
 ```powershell
-.\run_prod.bat
+# Windows: install GlassTrax API Agent from Releases
+# Docker host: configure to use agent
+AGENT_ENABLED=true AGENT_URL=http://192.168.1.100:8001 AGENT_KEY=gta_xxx docker-compose up -d
 ```
 
-Everything on port 8000: Portal `/`, Docs `/docs`, API `/api/v1`, Swagger `/api/docs`
+Port 3000: Portal + API with GlassTrax access via agent
 
 ### Docker Standalone
 
@@ -65,19 +68,17 @@ Everything on port 8000: Portal `/`, Docs `/docs`, API `/api/v1`, Swagger `/api/
 docker-compose up -d
 ```
 
-Port 3000: Portal `/`, Docs `/docs`, API `/api/v1` (no GlassTrax access)
+Port 3000: Portal `/`, API `/api/v1` (no GlassTrax access - for testing)
 
-### Docker + Windows Agent (Agent Mode)
+### Windows All-in-One (Beta)
 
 ```powershell
-# Windows: start the GlassTrax API Agent (handles ODBC)
-.\agent\run_agent.bat
-
-# Docker host: configure to use agent
-AGENT_ENABLED=true AGENT_URL=http://192.168.1.100:8001 AGENT_KEY=gta_xxx docker-compose up -d
+.\run_prod.bat
 ```
 
-Port 3000: Portal + API with GlassTrax access via agent
+Everything on port 8000: Portal `/`, API `/api/v1`, Swagger `/api/docs`
+
+Documentation hosted on GitHub Pages: https://codename-11.github.io/GlassTrax-Bridge/
 
 ### GlassTrax API Agent Only (Windows)
 
@@ -349,8 +350,8 @@ cd portal && npm run lint          # ESLint
 3. **Portal uses TanStack Query** - Data fetching with automatic caching/refetching
 4. **Status indicators animate** - Use CSS `animate-ping` for pulse effect
 5. **Docker is single-container** - nginx + uvicorn managed by supervisord
-6. **VitePress base: '/docs/'** - Served at /docs on both dev (via proxy) and prod (nginx)
-7. **Root package.json** - Has `npm run dev` using concurrently for all services
+6. **Docs decoupled** - Documentation hosted on GitHub Pages only (not bundled with app)
+7. **Root package.json** - Has `npm run dev` using concurrently for API + Portal
 8. **Diagnostics page** - Has server restart and database reset functionality
 9. **friendly_name in config.yaml** - Displayed in Dashboard connection status
 10. **api/utils/ contains logger** - `setup_logger` imported by API middleware
@@ -358,7 +359,7 @@ cd portal && npm run lint          # ESLint
 12. **TODO.md** - Keep it up to date with current features and TODOs. Leverage it for new features and TODOs.
 13. **Config validation** - `api/config_schema.py` validates config.yaml; `config_service.py` handles hot-reload
 14. **Prettier for portal** - Run `npm run format` in portal/ before committing
-15. **Vite proxy** - Dev server proxies `/api`, `/docs`, `/health` so all URLs work from port 5173
+15. **Vite proxy** - Dev server proxies `/api` and `/health` to backend API
 16. **API base URL** - Portal uses relative URLs (empty base), Vite proxies in dev, same-origin in prod
 17. **ruff for API** - Run `ruff check api/ --fix` and `ruff format api/` before committing
 18. **Agent mode** - When `agent.enabled=true`, API uses `AgentClient` to query Windows agent via HTTP
@@ -379,3 +380,5 @@ cd portal && npm run lint          # ESLint
 33. **Agent config location** - Installed mode uses `%APPDATA%\GlassTrax API Agent\` for config and logs (avoids Program Files permission issues)
 34. **Agent logging** - Log file at `agent.log` in config dir, recreated on each run, accessible via tray menu "View Log File"
 35. **Docs workflow** - `.github/workflows/docs.yml` deploys to GitHub Pages on docs/ changes; uses `VITEPRESS_BASE=/GlassTrax-Bridge/`
+36. **Docs URL** - https://codename-11.github.io/GlassTrax-Bridge/ (all docs links should point here)
+37. **Docker + Agent recommended** - Production deployments should use Docker + Windows Agent method

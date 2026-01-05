@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n API,Portal,Docs -c blue,green,magenta \"npm run dev:api\" \"npm run dev:portal\" \"npm run dev:docs\"",
+    "dev": "concurrently -n API,Portal -c blue,green \"npm run dev:api\" \"npm run dev:portal\"",
     "dev:api": "python32\\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir api",
     "dev:portal": "cd portal && npx vite --port 5173",
     "dev:docs": "cd docs && npx vitepress dev --port 5174",
-    "build": "npm run build:portal && npm run build:docs",
+    "build": "npm run build:portal",
     "build:portal": "cd portal && npm run build",
     "build:docs": "cd docs && npm run build"
   },

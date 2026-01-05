@@ -330,7 +330,7 @@ export function SettingsPage() {
             Configure application settings
             <span className="mx-2">·</span>
             <a
-              href="/docs/"
+              href="https://codename-11.github.io/GlassTrax-Bridge/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline inline-flex items-center gap-1"
@@ -862,7 +862,7 @@ export function SettingsPage() {
             </ol>
             <p className="mt-2">
               <a
-                href="/docs/guide/agent-setup.html"
+                href="https://codename-11.github.io/GlassTrax-Bridge/guide/agent-setup.html"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline inline-flex items-center gap-1"

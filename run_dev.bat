@@ -1,6 +1,7 @@
 @echo off
 REM GlassTrax Bridge - Full Development Environment
-REM Starts API, Portal, and VitePress Docs in a single terminal
+REM Starts API and Portal in a single terminal
+REM Documentation: https://codename-11.github.io/GlassTrax-Bridge/
 
 cd /d "%~dp0"
 
@@ -36,22 +37,14 @@ if not exist "portal\node_modules" (
     pushd portal && npm install && popd
 )
 
-REM Install docs dependencies if needed
-if not exist "docs\node_modules" (
-    echo Installing docs dependencies...
-    pushd docs && npm install && popd
-)
-
 echo.
-echo Starting all services...
-echo.
-echo   All accessible from http://localhost:5173
+echo Starting services...
 echo.
 echo   Portal:  http://localhost:5173
-echo   Docs:    http://localhost:5173/docs
 echo   Swagger: http://localhost:5173/api/docs
 echo   API:     http://localhost:5173/api/v1
 echo   Health:  http://localhost:5173/health
+echo   Docs:    https://codename-11.github.io/GlassTrax-Bridge/
 echo.
 echo Press Ctrl+C to stop all services
 echo.

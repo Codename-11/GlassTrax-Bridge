@@ -1,34 +1,36 @@
 # Deployment
 
-GlassTrax Bridge can be deployed using Docker or run directly on Windows.
+GlassTrax Bridge can be deployed using Docker (recommended) or run directly on Windows.
 
-## Docker Deployment
+## Docker + Windows Agent (Recommended)
 
-### Prerequisites
+Best approach: Docker runs the API and portal, Windows runs a minimal agent for ODBC access.
 
-- Docker and Docker Compose installed
-- Access to the GlassTrax-Bridge repository
+### Step 1: Install Agent on Windows
 
-### Quick Start
+Download `GlassTraxAPIAgent-X.X.X-Setup.exe` from [Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases) and run the installer. Start the agent from the Start Menu or system tray.
+
+On first run, an API key will be generated and displayed. **Save it!**
+
+### Step 2: Start Docker with Agent Configuration
 
 ```bash
-# Build and start the container
+AGENT_ENABLED=true \
+AGENT_URL=http://YOUR_WINDOWS_IP:8001 \
+AGENT_KEY=gta_your_key_here \
 docker-compose up -d
-
-# View logs
-docker-compose logs -f
 ```
 
-### Ports
-
-In Docker standalone mode, nginx routes all traffic through port 3000:
+### Ports (Docker + Agent)
 
 | URL | Content |
 |-----|---------|
 | `http://localhost:3000` | Admin Portal |
-| `http://localhost:3000/docs` | User Documentation |
-| `http://localhost:3000/api/v1/*` | REST API |
+| `http://localhost:3000/api/v1/*` | REST API (queries via agent) |
 | `http://localhost:3000/api/docs` | OpenAPI (Swagger) |
+| `http://WINDOWS_IP:8001/health` | Agent health check |
+
+Documentation: [GitHub Pages](https://codename-11.github.io/GlassTrax-Bridge/)
 
 ::: info
 Port 8000 (uvicorn) is internal to the container. All external access is through port 3000 via nginx.
@@ -45,7 +47,6 @@ The single container runs multiple services managed by supervisord:
 ├─────────────────────────────────────────────┤
 │  nginx (reverse proxy)                       │
 │    /           → React Portal (static)       │
-│    /docs       → VitePress Docs (static)     │
 │    /api/*      → uvicorn (internal:8000)     │
 │    /health     → uvicorn (internal:8000)     │
 ├─────────────────────────────────────────────┤
@@ -87,11 +88,22 @@ environment:
 The portal uses relative URLs by default, so `VITE_API_URL` is only needed for non-standard setups.
 :::
 
-## Windows Deployment
+## Docker Standalone
 
-For full GlassTrax connectivity, run directly on Windows with the Pervasive ODBC driver.
+For testing without GlassTrax database access:
 
-### Option 1: All-in-One (Recommended)
+```bash
+docker pull ghcr.io/codename-11/glasstrax-bridge:latest
+docker-compose up -d
+```
+
+Portal on `:3000` (no GlassTrax ODBC access)
+
+## Windows All-in-One (Beta)
+
+::: warning Beta Method
+This method is available but considered beta. Docker + Agent is recommended for production.
+:::
 
 Run everything on a single port with one script:
 
@@ -99,71 +111,15 @@ Run everything on a single port with one script:
 .\run_prod.bat
 ```
 
-This builds the portal and docs, then serves everything on port 8000:
+This builds the portal and serves everything on port 8000:
 
 | URL | Content |
 |-----|---------|
 | http://localhost:8000 | Admin Portal |
-| http://localhost:8000/docs | User Documentation |
 | http://localhost:8000/api/v1 | REST API |
 | http://localhost:8000/api/docs | OpenAPI (Swagger) |
 
-### Option 2: Agent Only (for Docker)
-
-If Docker handles the portal and API, but you need Windows for ODBC access:
-
-```powershell
-.\agent\run_agent.bat
-```
-
-This starts the GlassTrax API Agent on port 8001. See [Agent Setup](/guide/agent-setup) for details.
-
-## Docker + Windows Agent Mode
-
-Best of both worlds: Docker runs the full API and portal, Windows runs a minimal agent for ODBC access.
-
-### Step 1: Start Agent on Windows
-
-```powershell
-.\agent\run_agent.bat
-```
-
-On first run, an API key will be generated and displayed. **Save it!**
-
-### Step 2: Find Your Windows IP
-
-```powershell
-ipconfig
-# Look for IPv4 Address, e.g., 192.168.1.100
-```
-
-### Step 3: Start Docker with Agent Configuration
-
-```bash
-AGENT_ENABLED=true \
-AGENT_URL=http://192.168.1.100:8001 \
-AGENT_KEY=gta_your_key_here \
-docker-compose up -d
-```
-
-Or on PowerShell:
-```powershell
-$env:AGENT_ENABLED="true"
-$env:AGENT_URL="http://192.168.1.100:8001"
-$env:AGENT_KEY="gta_your_key_here"
-docker-compose up -d
-```
-
-### Agent Mode URLs
-
-| URL | Content |
-|-----|---------|
-| http://localhost:3000 | Portal (Docker) |
-| http://localhost:3000/docs | User Docs (Docker) |
-| http://localhost:3000/api/v1/* | API (Docker, queries via agent) |
-| http://WINDOWS_IP:8001/health | Agent health (direct) |
-
-The Docker API server connects to the Windows agent for GlassTrax database queries.
+Documentation: [GitHub Pages](https://codename-11.github.io/GlassTrax-Bridge/)
 
 ## Health Checks
 

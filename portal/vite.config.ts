@@ -18,11 +18,6 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
-      // Proxy /docs to VitePress dev server (mirrors production nginx config)
-      '/docs': {
-        target: 'http://localhost:5174',
-        changeOrigin: true,
-      },
       // Proxy /health to FastAPI backend
       '/health': {
         target: 'http://localhost:8000',

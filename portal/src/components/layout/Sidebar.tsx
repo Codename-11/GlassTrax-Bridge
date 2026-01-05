@@ -11,7 +11,7 @@ const navigation = [
   { name: 'Access Logs', href: '/logs', icon: ListIcon },
   { name: 'Settings', href: '/settings', icon: CogIcon },
   { name: 'Diagnostics', href: '/diagnostics', icon: ToolIcon },
-  { name: 'Documentation', href: '/docs/', icon: BookOpenIcon, external: true },
+  { name: 'Documentation', href: 'https://codename-11.github.io/GlassTrax-Bridge/', icon: BookOpenIcon, external: true },
 ];
 
 export function Sidebar() {

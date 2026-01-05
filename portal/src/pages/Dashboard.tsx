@@ -99,7 +99,7 @@ export function DashboardPage() {
             View All Logs
           </Button>
         </Link>
-        <a href="/docs/" target="_blank" rel="noopener noreferrer">
+        <a href="https://codename-11.github.io/GlassTrax-Bridge/" target="_blank" rel="noopener noreferrer">
           <Button variant="outline" className="gap-2">
             <BookOpenIcon className="h-4 w-4" />
             Documentation

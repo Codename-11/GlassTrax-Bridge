@@ -32,17 +32,6 @@ server {
         proxy_pass http://127.0.0.1:8000;
     }
 
-    # VitePress documentation at /docs
-    location /docs {
-        alias /app/docs/.vitepress/dist;
-        try_files $uri $uri/ $uri.html /docs/index.html;
-    }
-
-    # Static assets for docs
-    location /docs/assets {
-        alias /app/docs/.vitepress/dist/assets;
-    }
-
     # Portal SPA - all other routes
     location / {
         try_files $uri $uri/ /index.html;

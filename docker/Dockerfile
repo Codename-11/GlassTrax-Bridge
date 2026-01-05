@@ -1,5 +1,6 @@
 # GlassTrax-Bridge - Multi-stage Dockerfile
-# Builds portal and docs, with optional API proxy to Windows host
+# Builds portal, with optional API proxy to Windows host
+# Documentation is hosted on GitHub Pages: https://codename-11.github.io/GlassTrax-Bridge/
 #
 # MODES:
 #   1. Standalone: API runs in container (no GlassTrax access)
@@ -25,22 +26,7 @@ COPY portal/ ./
 RUN npm run build
 
 # ============================================
-# Stage 2: Build VitePress Documentation
-# ============================================
-FROM node:20-alpine AS docs-builder
-
-WORKDIR /build/docs
-
-# Copy package files
-COPY docs/package*.json ./
-RUN npm ci
-
-# Copy source and build
-COPY docs/ ./
-RUN npm run build
-
-# ============================================
-# Stage 3: Production Runtime
+# Stage 2: Production Runtime
 # ============================================
 FROM python:3.11-slim
 
@@ -69,9 +55,6 @@ COPY VERSION ./
 # Copy built portal from stage 1
 COPY --from=portal-builder /build/portal/dist ./portal/dist
 
-# Copy built docs from stage 2
-COPY --from=docs-builder /build/docs/.vitepress/dist ./docs/.vitepress/dist
-
 # Copy nginx template (will be processed by entrypoint)
 COPY docker/nginx.conf.template /etc/nginx/nginx.conf.template
 
@@ -90,7 +73,7 @@ ENV API_HOST=localhost
 ENV API_PORT=8000
 
 # Expose ports
-# 80 - Portal + Documentation (nginx)
+# 80 - Portal (nginx)
 # 8000 - API (uvicorn) - only used in standalone mode
 EXPOSE 80 8000
 

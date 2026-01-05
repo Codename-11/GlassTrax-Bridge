@@ -35,7 +35,37 @@ A multi-tenant API platform for secure, read-only access to GlassTrax ERP data v
 
 ## Installation
 
-### Option A: Windows All-in-One (Recommended)
+### Option A: Docker + Windows Agent (Recommended)
+
+Run Portal and API in Docker, with a Windows agent providing ODBC access. This is the recommended deployment method.
+
+**Step 1:** Install the GlassTrax API Agent on Windows
+- Download `GlassTraxAPIAgent-X.X.X-Setup.exe` from [Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases)
+- Run installer and start agent from system tray
+- Save the API key shown on first run
+
+**Step 2:** Start Docker with agent connection
+```bash
+AGENT_ENABLED=true \
+AGENT_URL=http://YOUR_WINDOWS_IP:8001 \
+AGENT_KEY=gta_your_key_here \
+docker-compose up -d
+```
+
+Access at `http://localhost:3000` (Docker), agent health at `http://WINDOWS_IP:8001/health`.
+
+### Option B: Docker Standalone
+
+For testing without GlassTrax database access:
+
+```bash
+docker pull ghcr.io/codename-11/glasstrax-bridge:latest
+docker-compose up -d
+```
+
+Access at `http://localhost:3000`.
+
+### Option C: Windows All-in-One (Beta)
 
 Run everything directly on Windows with full GlassTrax ODBC access.
 
@@ -59,48 +89,18 @@ notepad config.yaml  # Set your DSN
 # Initialize database
 python32\python.exe -m alembic upgrade head
 
-# Start production server (builds portal/docs automatically)
+# Start production server
 .\run_prod.bat
 ```
 
-Access at `http://localhost:8000` (Portal, Docs, API all on one port).
-
-### Option B: Docker + Windows Agent
-
-Run Portal and API in Docker, with a Windows agent providing ODBC access.
-
-**Step 1:** Install the GlassTrax API Agent on Windows
-- Download `GlassTraxAPIAgent-X.X.X-Setup.exe` from [Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases)
-- Run installer and start agent from system tray
-- Save the API key shown on first run
-
-**Step 2:** Start Docker with agent connection
-```bash
-AGENT_ENABLED=true \
-AGENT_URL=http://YOUR_WINDOWS_IP:8001 \
-AGENT_KEY=gta_your_key_here \
-docker-compose up -d
-```
-
-Access at `http://localhost:3000` (Docker), agent health at `http://WINDOWS_IP:8001/health`.
-
-### Option C: Docker Standalone
-
-For testing without GlassTrax database access:
-
-```bash
-docker pull ghcr.io/codename-11/glasstrax-bridge:latest
-docker-compose up -d
-```
-
-Access at `http://localhost:3000`.
+Access at `http://localhost:8000` (Portal and API on one port).
 
 ### URLs by Deployment
 
-| Deployment | Portal | Docs | API | Swagger |
-|------------|--------|------|-----|---------|
-| Windows (run_prod.bat) | :8000 | :8000/docs | :8000/api/v1 | :8000/api/docs |
-| Docker | :3000 | :3000/docs | :3000/api/v1 | :3000/api/docs |
+| Deployment | Portal | API | Swagger | Docs |
+|------------|--------|-----|---------|------|
+| Docker + Agent | :3000 | :3000/api/v1 | :3000/api/docs | [GitHub Pages](https://codename-11.github.io/GlassTrax-Bridge/) |
+| Windows | :8000 | :8000/api/v1 | :8000/api/docs | [GitHub Pages](https://codename-11.github.io/GlassTrax-Bridge/) |
 
 ## Development Setup
 
@@ -134,7 +134,7 @@ python32\python.exe -m alembic upgrade head
 .\run_dev.bat
 ```
 
-Development server runs at `http://localhost:5173` with Vite proxying API requests.
+Development server runs at `http://localhost:5173` with Vite proxying API requests. Documentation is available at [GitHub Pages](https://codename-11.github.io/GlassTrax-Bridge/).
 
 ## Authentication
 
@@ -237,35 +237,14 @@ The API checks for pending migrations on startup and displays a warning if updat
 
 ## Production Deployment
 
-### Windows (with GlassTrax ODBC)
-
-```powershell
-.\run_prod.bat
-```
-
-Builds and serves everything on port 8000:
-- Portal at `/`
-- User Docs at `/docs`
-- API at `/api/v1`
-- Swagger at `/api/docs`
-
-### Docker Standalone
-
-```bash
-docker-compose up -d
-```
-
-Portal on `:3000` (no GlassTrax ODBC access - use Agent Mode)
-
-### Docker + Windows Agent (Agent Mode)
+### Docker + Windows Agent (Recommended)
 
 Best option: Docker runs full API + portal, Windows runs minimal agent for ODBC access.
 
-**Step 1: On Windows** - Start the GlassTrax API Agent:
-```powershell
-.\agent\run_agent.bat
-```
-Save the API key shown on first run!
+**Step 1: On Windows** - Install the GlassTrax API Agent:
+- Download from [Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases)
+- Run installer and start from system tray
+- Save the API key shown on first run
 
 **Step 2: On Docker host** - Configure agent connection:
 ```bash
@@ -275,7 +254,29 @@ AGENT_KEY=gta_your_key_here \
 docker-compose up -d
 ```
 
-### Agent Installer (Recommended)
+Portal on `:3000` with full GlassTrax access via agent.
+
+### Docker Standalone
+
+```bash
+docker-compose up -d
+```
+
+Portal on `:3000` (no GlassTrax ODBC access - for testing only)
+
+### Windows All-in-One (Beta)
+
+```powershell
+.\run_prod.bat
+```
+
+Builds and serves everything on port 8000:
+- Portal at `/`
+- API at `/api/v1`
+- Swagger at `/api/docs`
+- Docs at [GitHub Pages](https://codename-11.github.io/GlassTrax-Bridge/)
+
+### Agent Installer
 
 For easier deployment, download the standalone Windows installer from [Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases):
 
@@ -353,4 +354,6 @@ Starts all services in a single terminal with color-coded output.
 
 ## License
 
-Internal use only.
+Copyright (c) 2025-2026 Axiom-Labs. All Rights Reserved.
+
+This software is proprietary. Unauthorized copying, modification, or distribution is prohibited. See [LICENSE](LICENSE) for details.
