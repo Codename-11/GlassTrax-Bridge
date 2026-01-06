@@ -30,7 +30,8 @@ aiosqlite                   # Async SQLite driver
 # ======================
 # Authentication & Security
 # ======================
-python-jose[cryptography]   # JWT token handling
+python-jose[cryptography]   # JWT token handling (jose module)
+PyJWT                       # JWT token handling (jwt module)
 passlib[bcrypt]             # Password and API key hashing
 python-multipart            # Form data parsing (file uploads)
 
