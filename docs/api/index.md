@@ -38,7 +38,12 @@ OpenAPI (Swagger) documentation is available at `/api/docs`:
 | `GET /api/v1/customers` | List customers | `customers:read` |
 | `GET /api/v1/customers/{id}` | Get customer | `customers:read` |
 | `GET /api/v1/orders` | List orders | `orders:read` |
-| `GET /api/v1/orders/{id}` | Get order | `orders:read` |
+| `GET /api/v1/orders/{so_no}` | Get order details | `orders:read` |
+| `GET /api/v1/orders/{so_no}/exists` | Check if order exists | `orders:read` |
+
+::: tip Field Selection
+The `GET /orders/{so_no}` endpoint supports field selection via the `fields` query parameter for sparse responses. See [Orders API](/api/orders) for details.
+:::
 
 ### Admin Endpoints
 

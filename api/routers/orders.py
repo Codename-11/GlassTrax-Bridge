@@ -16,20 +16,21 @@ Provides REST endpoints for order data access:
 
 import math
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 
+from api.dependencies import get_glasstrax_service
+from api.middleware import APIKeyInfo, get_api_key, require_orders_read
+from api.middleware.rate_limit import limiter
 from api.schemas.order import (
+    OrderAddress,
+    OrderExistsResponse,
+    OrderLineItem,
     OrderListResponse,
     OrderResponse,
-    OrderLineItem,
-    OrderAddress,
 )
-from api.schemas.responses import PaginatedResponse, PaginationMeta, APIResponse
-from api.middleware import get_api_key, require_orders_read, APIKeyInfo
-from api.middleware.rate_limit import limiter
-from api.dependencies import get_glasstrax_service
+from api.schemas.responses import APIResponse, PaginatedResponse, PaginationMeta
 from api.services.glasstrax import GlassTraxService
 
 router = APIRouter()
@@ -53,13 +54,13 @@ async def list_orders(
     api_key: APIKeyInfo = Depends(get_api_key),
     _: None = Depends(require_orders_read),
     service: GlassTraxService = Depends(get_glasstrax_service),
-    customer_id: Optional[str] = Query(None, description="Filter by customer ID"),
-    order_status: Optional[str] = Query(None, alias="status", description="Filter by status (O=Open, C=Closed)"),
-    date_from: Optional[date] = Query(None, description="Orders from this date"),
-    date_to: Optional[date] = Query(None, description="Orders to this date"),
-    search: Optional[str] = Query(None, description="Search SO#, job name, or PO#"),
-    route_id: Optional[str] = Query(None, description="Filter by route"),
-    salesperson: Optional[str] = Query(None, description="Filter by salesperson"),
+    customer_id: str | None = Query(None, description="Filter by customer ID"),
+    order_status: str | None = Query(None, alias="status", description="Filter by status (O=Open, C=Closed)"),
+    date_from: date | None = Query(None, description="Orders from this date"),
+    date_to: date | None = Query(None, description="Orders to this date"),
+    search: str | None = Query(None, description="Search SO#, job name, or PO#"),
+    route_id: str | None = Query(None, description="Filter by route"),
+    salesperson: str | None = Query(None, description="Filter by salesperson"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
 ) -> PaginatedResponse[OrderListResponse]:
@@ -126,8 +127,100 @@ async def list_orders(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}",
-        )
+            detail=f"Database error: {e!s}",
+        ) from e
+
+
+@router.get(
+    "/{so_no}/exists",
+    response_model=APIResponse[OrderExistsResponse],
+    summary="Check if order exists",
+    description="Lightweight validation to check if an order exists with basic info",
+)
+@limiter.limit("120/minute", key_func=get_api_key_identifier)
+async def check_order_exists(
+    request: Request,
+    so_no: int,
+    api_key: APIKeyInfo = Depends(get_api_key),
+    _: None = Depends(require_orders_read),
+    service: GlassTraxService = Depends(get_glasstrax_service),
+) -> APIResponse[OrderExistsResponse]:
+    """
+    Lightweight order validation endpoint.
+
+    Returns whether the order exists along with basic identifying information.
+    Useful for form validation without fetching full order details.
+
+    - **so_no**: The sales order number (numeric)
+
+    Returns:
+    - **exists**: Whether the order was found
+    - **customer_id**: Customer ID (if exists)
+    - **customer_name**: Customer name (if exists)
+    - **customer_po_no**: Customer PO number (if exists)
+    - **job_name**: Job name (if exists)
+    - **status**: Order status - Open/Closed (if exists)
+    """
+    try:
+        result = await service.check_order_exists(so_no)
+        return APIResponse(success=True, data=OrderExistsResponse(**result))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {e!s}",
+        ) from e
+
+
+def filter_response_fields(data: dict, fields: list[str]) -> dict:
+    """
+    Filter a response dict to only include specified fields.
+
+    Supports nested fields with dot notation (e.g., 'line_items.item_description').
+    Special handling for 'line_items' - if included, returns all line item fields
+    unless specific line_items.* fields are requested.
+    """
+    if not fields:
+        return data
+
+    # Normalize field names (strip whitespace, lowercase for comparison)
+    fields = [f.strip() for f in fields]
+
+    # Check if line_items is requested (with or without subfields)
+    line_item_fields = [f for f in fields if f.startswith("line_items.")]
+    include_line_items = "line_items" in fields or bool(line_item_fields)
+
+    # Top-level fields to include
+    top_level_fields = [f for f in fields if "." not in f]
+
+    result = {}
+
+    # Always include so_no for identification
+    if "so_no" in data:
+        result["so_no"] = data["so_no"]
+
+    # Include requested top-level fields
+    for field in top_level_fields:
+        if field in data and field != "line_items":
+            result[field] = data[field]
+
+    # Handle line_items specially
+    if include_line_items and "line_items" in data and data["line_items"]:
+        if line_item_fields:
+            # Filter line item fields
+            line_fields = [f.replace("line_items.", "") for f in line_item_fields]
+            # Always include so_line_no for identification
+            if "so_line_no" not in line_fields:
+                line_fields.insert(0, "so_line_no")
+
+            result["line_items"] = [
+                {k: v for k, v in item.items() if k in line_fields}
+                for item in data["line_items"]
+            ]
+        else:
+            # Include all line item fields
+            result["line_items"] = data["line_items"]
+
+    return result
 
 
 @router.get(
@@ -143,11 +236,22 @@ async def get_order(
     api_key: APIKeyInfo = Depends(get_api_key),
     _: None = Depends(require_orders_read),
     service: GlassTraxService = Depends(get_glasstrax_service),
+    fields: str | None = Query(
+        None,
+        description="Comma-separated list of fields to include (e.g., 'customer_name,customer_po_no,line_items'). "
+                    "Supports line_items subfields: 'line_items.item_description,line_items.overall_thickness'",
+    ),
 ) -> APIResponse[OrderResponse]:
     """
     Get detailed order information including line items
 
     - **so_no**: The sales order number (numeric)
+    - **fields**: Optional comma-separated field list for sparse responses
+
+    **Field Selection Examples:**
+    - `?fields=customer_name,customer_po_no,job_name` - Header fields only
+    - `?fields=customer_name,line_items` - Header + all line item fields
+    - `?fields=customer_name,line_items.item_description,line_items.overall_thickness` - Specific line fields
     """
     try:
         order_data = await service.get_order_by_number(so_no)
@@ -218,6 +322,21 @@ async def get_order(
             total_amount=order_data.get("total_amount"),
         )
 
+        # Apply field selection if requested
+        if fields:
+            field_list = [f.strip() for f in fields.split(",")]
+            # Convert to dict, filter, and reconstruct
+            order_dict = order.model_dump()
+            # Also convert line_items to dicts if present
+            if order_dict.get("line_items"):
+                order_dict["line_items"] = [
+                    item.model_dump() if hasattr(item, "model_dump") else item
+                    for item in (order.line_items or [])
+                ]
+            filtered_data = filter_response_fields(order_dict, field_list)
+            # Return JSONResponse to bypass response_model validation for sparse responses
+            return JSONResponse(content={"success": True, "data": filtered_data})
+
         return APIResponse(success=True, data=order)
 
     except HTTPException:
@@ -225,5 +344,5 @@ async def get_order(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}",
-        )
+            detail=f"Database error: {e!s}",
+        ) from e

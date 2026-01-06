@@ -17,11 +17,11 @@ Status: open_closed_flag - 'O' = Open, 'C' = Closed
 """
 
 from datetime import date
-from typing import List, Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 
-def parse_glasstrax_date(date_str: Optional[str]) -> Optional[date]:
+def parse_glasstrax_date(date_str: str | None) -> date | None:
     """Convert GlassTrax YYYYMMDD string to date object"""
     if not date_str or len(date_str) != 8 or date_str == "18991230":
         return None
@@ -35,17 +35,26 @@ class OrderLineItem(BaseModel):
     """Order line item from sales_order_detail table"""
 
     so_line_no: int = Field(..., description="Line number")
-    item_id: Optional[str] = Field(None, max_length=25, description="Item ID")
-    item_description: Optional[str] = Field(None, max_length=50, description="Item description")
-    cust_part_no: Optional[str] = Field(None, description="Customer part number")
-    order_qty: Optional[float] = Field(None, description="Ordered quantity")
-    shipped_qty: Optional[float] = Field(None, description="Shipped quantity")
-    bill_qty: Optional[float] = Field(None, description="Billed quantity")
-    unit_price: Optional[float] = Field(None, description="Unit price")
-    total_extended_price: Optional[float] = Field(None, description="Extended price (qty * unit)")
-    size_1: Optional[float] = Field(None, description="Size dimension 1")
-    size_2: Optional[float] = Field(None, description="Size dimension 2")
-    open_closed_flag: Optional[str] = Field(None, description="Line status (O/C)")
+    item_id: str | None = Field(None, max_length=25, description="Item ID")
+    item_description: str | None = Field(None, max_length=50, description="Item description")
+    cust_part_no: str | None = Field(None, description="Customer part number")
+    order_qty: float | None = Field(None, description="Ordered quantity")
+    shipped_qty: float | None = Field(None, description="Shipped quantity")
+    bill_qty: float | None = Field(None, description="Billed quantity")
+    unit_price: float | None = Field(None, description="Unit price")
+    total_extended_price: float | None = Field(None, description="Extended price (qty * unit)")
+    size_1: float | None = Field(None, description="Size dimension 1 (width)")
+    size_2: float | None = Field(None, description="Size dimension 2 (height)")
+    block_size: str | None = Field(None, description="Formatted size (size_1 x size_2)")
+    open_closed_flag: str | None = Field(None, description="Line status (O/C)")
+
+    # Glass product details
+    overall_thickness: float | None = Field(None, description="Glass thickness")
+    pattern: str | None = Field(None, max_length=30, description="Pattern type")
+
+    # Processing info (from so_processing + processing_charges)
+    has_fab: bool | None = Field(None, description="Has fabrication processing")
+    edgework: str | None = Field(None, description="Edgework description")
 
     class Config:
         from_attributes = True
@@ -54,13 +63,13 @@ class OrderLineItem(BaseModel):
 class OrderAddress(BaseModel):
     """Order shipping/billing address"""
 
-    name: Optional[str] = None
-    address1: Optional[str] = None
-    address2: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    country: Optional[str] = None
-    zip_code: Optional[str] = None
+    name: str | None = None
+    address1: str | None = None
+    address2: str | None = None
+    city: str | None = None
+    state: str | None = None
+    country: str | None = None
+    zip_code: str | None = None
 
 
 class OrderBase(BaseModel):
@@ -68,66 +77,66 @@ class OrderBase(BaseModel):
 
     so_no: int = Field(..., description="Sales order number")
     customer_id: str = Field(..., max_length=6, description="Customer ID")
-    order_date: Optional[date] = Field(None, description="Order date")
+    order_date: date | None = Field(None, description="Order date")
 
 
 class OrderResponse(OrderBase):
     """Full order response with details"""
 
     # Header info
-    branch_id: Optional[str] = None
-    job_name: Optional[str] = None
-    quotation_no: Optional[int] = None
-    type: Optional[str] = None  # Order type
+    branch_id: str | None = None
+    job_name: str | None = None
+    quotation_no: int | None = None
+    type: str | None = None  # Order type
 
     # Customer info (joined)
-    customer_name: Optional[str] = None
+    customer_name: str | None = None
 
     # Status
-    open_closed_flag: Optional[str] = Field(None, description="O=Open, C=Closed")
-    status: Optional[str] = Field(None, description="Status description")
-    credit_hold_flag: Optional[str] = None
-    verification_hold: Optional[str] = None
+    open_closed_flag: str | None = Field(None, description="O=Open, C=Closed")
+    status: str | None = Field(None, description="Status description")
+    credit_hold_flag: str | None = None
+    verification_hold: str | None = None
 
     # Dates
-    ship_date: Optional[date] = None
-    delivery_date: Optional[date] = None
-    quotation_date: Optional[date] = None
-    expiration_date: Optional[date] = None
+    ship_date: date | None = None
+    delivery_date: date | None = None
+    quotation_date: date | None = None
+    expiration_date: date | None = None
 
     # References
-    customer_po_no: Optional[str] = None
-    inside_salesperson: Optional[str] = None
-    route_id: Optional[str] = None
+    customer_po_no: str | None = None
+    inside_salesperson: str | None = None
+    route_id: str | None = None
 
     # Contact
-    buyer_first_name: Optional[str] = None
-    buyer_last_name: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
+    buyer_first_name: str | None = None
+    buyer_last_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
 
     # Addresses
-    bill_address: Optional[OrderAddress] = None
-    ship_address: Optional[OrderAddress] = None
+    bill_address: OrderAddress | None = None
+    ship_address: OrderAddress | None = None
 
     # Shipping
-    ship_method: Optional[str] = None
-    warehouse_id: Optional[str] = None
+    ship_method: str | None = None
+    warehouse_id: str | None = None
 
     # Financial
-    pay_type: Optional[str] = None
-    taxable: Optional[bool] = None
-    currency_id: Optional[str] = None
-    amount_paid: Optional[float] = None
-    surcharge: Optional[float] = None
+    pay_type: str | None = None
+    taxable: bool | None = None
+    currency_id: str | None = None
+    amount_paid: float | None = None
+    surcharge: float | None = None
 
     # Line items
-    line_items: Optional[List[OrderLineItem]] = None
+    line_items: list[OrderLineItem] | None = None
 
     # Calculated totals
-    total_lines: Optional[int] = None
-    total_qty: Optional[float] = None
-    total_amount: Optional[float] = None
+    total_lines: int | None = None
+    total_qty: float | None = None
+    total_amount: float | None = None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -149,17 +158,17 @@ class OrderListResponse(BaseModel):
 
     so_no: int
     customer_id: str
-    customer_name: Optional[str] = None
-    order_date: Optional[date] = None
-    job_name: Optional[str] = None
-    open_closed_flag: Optional[str] = None
-    status: Optional[str] = None
-    ship_method: Optional[str] = None
-    customer_po_no: Optional[str] = None
-    inside_salesperson: Optional[str] = None
-    route_id: Optional[str] = None
-    line_count: Optional[int] = None
-    total_amount: Optional[float] = None
+    customer_name: str | None = None
+    order_date: date | None = None
+    job_name: str | None = None
+    open_closed_flag: str | None = None
+    status: str | None = None
+    ship_method: str | None = None
+    customer_po_no: str | None = None
+    inside_salesperson: str | None = None
+    route_id: str | None = None
+    line_count: int | None = None
+    total_amount: float | None = None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -179,12 +188,24 @@ class OrderListResponse(BaseModel):
 class OrderQueryParams(BaseModel):
     """Query parameters for order list endpoint"""
 
-    customer_id: Optional[str] = Field(None, description="Filter by customer ID")
-    status: Optional[str] = Field(None, description="Filter by status (O=Open, C=Closed)")
-    date_from: Optional[date] = Field(None, description="Orders from this date")
-    date_to: Optional[date] = Field(None, description="Orders to this date")
-    search: Optional[str] = Field(None, description="Search SO#, job name, or PO#")
-    route_id: Optional[str] = Field(None, description="Filter by route")
-    salesperson: Optional[str] = Field(None, description="Filter by salesperson")
+    customer_id: str | None = Field(None, description="Filter by customer ID")
+    status: str | None = Field(None, description="Filter by status (O=Open, C=Closed)")
+    date_from: date | None = Field(None, description="Orders from this date")
+    date_to: date | None = Field(None, description="Orders to this date")
+    search: str | None = Field(None, description="Search SO#, job name, or PO#")
+    route_id: str | None = Field(None, description="Filter by route")
+    salesperson: str | None = Field(None, description="Filter by salesperson")
     page: int = Field(1, ge=1, description="Page number")
     page_size: int = Field(20, ge=1, le=100, description="Items per page")
+
+
+class OrderExistsResponse(BaseModel):
+    """Lightweight order validation response"""
+
+    exists: bool = Field(..., description="Whether the order exists")
+    so_no: int | None = Field(None, description="Sales order number (if exists)")
+    customer_id: str | None = Field(None, description="Customer ID (if exists)")
+    customer_name: str | None = Field(None, description="Customer name (if exists)")
+    customer_po_no: str | None = Field(None, description="Customer PO number (if exists)")
+    job_name: str | None = Field(None, description="Job name (if exists)")
+    status: str | None = Field(None, description="Order status - Open/Closed (if exists)")

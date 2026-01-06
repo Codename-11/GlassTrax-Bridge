@@ -43,22 +43,24 @@ Settings are defined but not wired to actual query execution:
 
 Enhancements needed to support TGI Web Apps remake form autofill and order validation.
 
-### Phase 1: Enhanced Order Line Details
-- [ ] Add glass product fields to order line response:
+### Phase 1: Enhanced Order Line Details (COMPLETED)
+- [x] Add glass product fields to order line response:
   - `overall_thickness` - from `sales_order_detail`
   - `pattern` - from `sales_order_detail`
-- [ ] Add `has_fab` boolean - check if `so_processing` has FAB process_group
-- [ ] Add `edgework` string - description from `processing_charges` where process_group='EDGE'
-- [ ] Update `agent_config.yaml` to allow: `so_processing`, `processing_charges`, `inventory_items`
+  - `block_size` - computed from `"{size_1} x {size_2}"`
+- [x] Add `has_fab` boolean - check if `so_processing` has FAB process_group
+- [x] Add `edgework` string - description from `processing_charges` where process_group='EDGE'
+- [x] Update `agent_config.yaml` to allow: `so_processing`, `processing_charges`, `inventory_items`
 
-### Phase 2: Field Selection (Optional Enhancement)
-- [ ] Add `fields` query parameter to `/orders/{so_no}` endpoint
-- [ ] Allow sparse responses: `?fields=so_no,customer_name,line_items`
-- [ ] Maintain API key permissions at endpoint level (not field level)
+### Phase 2: Field Selection (COMPLETED)
+- [x] Add `fields` query parameter to `/orders/{so_no}` endpoint
+- [x] Allow sparse responses: `?fields=so_no,customer_name,line_items`
+- [x] Support nested fields: `?fields=line_items.item_description,line_items.overall_thickness`
+- [x] Maintain API key permissions at endpoint level (not field level)
 
-### Phase 3: Order Validation Endpoint
-- [ ] Add `GET /api/v1/orders/{so_no}/exists` - lightweight validation
-- [ ] Return: `{ exists: bool, customer_id?, customer_name? }`
+### Phase 3: Order Validation Endpoint (COMPLETED)
+- [x] Add `GET /api/v1/orders/{so_no}/exists` - lightweight validation
+- [x] Return: `{ exists, so_no, customer_id, customer_name, customer_po_no, job_name, status }`
 
 ### Data Model Reference
 

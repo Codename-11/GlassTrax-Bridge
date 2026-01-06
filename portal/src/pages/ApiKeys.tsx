@@ -9,6 +9,7 @@ import {
   type CreateAPIKeyRequest,
 } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -264,6 +265,12 @@ export function ApiKeysPage() {
   )
 }
 
+// Available permissions for API keys
+const AVAILABLE_PERMISSIONS = [
+  { id: 'customers:read', label: 'Customers', description: 'Read customer data' },
+  { id: 'orders:read', label: 'Orders', description: 'Read order data' },
+] as const
+
 interface CreateKeyFormProps {
   tenants: { id: number; name: string }[]
   onSubmit: (data: CreateAPIKeyRequest) => void
@@ -274,16 +281,43 @@ function CreateKeyForm({ tenants, onSubmit, isLoading }: CreateKeyFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     tenant_id: tenants[0]?.id ?? 0,
-    permissions: 'customers:read,orders:read',
+    permissions: AVAILABLE_PERMISSIONS.map((p) => p.id) as string[],
     rate_limit: 60,
   })
 
+  const handlePermissionToggle = (permissionId: string, checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      permissions: checked
+        ? [...prev.permissions, permissionId]
+        : prev.permissions.filter((p) => p !== permissionId),
+    }))
+  }
+
+  const handleSelectAll = () => {
+    setFormData((prev) => ({
+      ...prev,
+      permissions: AVAILABLE_PERMISSIONS.map((p) => p.id),
+    }))
+  }
+
+  const handleClearAll = () => {
+    setFormData((prev) => ({
+      ...prev,
+      permissions: [],
+    }))
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (formData.permissions.length === 0) {
+      toast.error('Please select at least one permission')
+      return
+    }
     onSubmit({
       tenant_id: formData.tenant_id,
       name: formData.name,
-      permissions: formData.permissions.split(',').map((p) => p.trim()),
+      permissions: formData.permissions,
       rate_limit: formData.rate_limit,
     })
   }
@@ -324,16 +358,51 @@ function CreateKeyForm({ tenants, onSubmit, isLoading }: CreateKeyFormProps) {
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="permissions">Permissions (comma-separated)</Label>
-          <Input
-            id="permissions"
-            placeholder="customers:read,orders:read"
-            value={formData.permissions}
-            onChange={(e) => setFormData({ ...formData, permissions: e.target.value })}
-          />
-          <p className="text-muted-foreground text-xs">
-            Available: customers:read, orders:read, admin:*, *:*
-          </p>
+          <div className="flex items-center justify-between">
+            <Label>Permissions</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={handleSelectAll}
+              >
+                Select All
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={handleClearAll}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-3 rounded-md border p-3">
+            {AVAILABLE_PERMISSIONS.map((permission) => (
+              <div key={permission.id} className="flex items-start space-x-3">
+                <Checkbox
+                  id={permission.id}
+                  checked={formData.permissions.includes(permission.id)}
+                  onCheckedChange={(checked) =>
+                    handlePermissionToggle(permission.id, checked === true)
+                  }
+                />
+                <div className="grid gap-0.5 leading-none">
+                  <label htmlFor={permission.id} className="cursor-pointer text-sm font-medium">
+                    {permission.label}
+                  </label>
+                  <p className="text-muted-foreground text-xs">{permission.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {formData.permissions.length === 0 && (
+            <p className="text-destructive text-xs">At least one permission is required</p>
+          )}
         </div>
 
         <div className="grid gap-2">

@@ -250,7 +250,7 @@ class GlassTraxService:
         # Convert rows to dicts
         customers = []
         for row in result.rows:
-            customer = dict(zip([c.lower() for c in result.columns], row))
+            customer = dict(zip([c.lower() for c in result.columns], row, strict=False))
             customers.append(customer)
 
         return customers, total
@@ -332,7 +332,7 @@ class GlassTraxService:
         rows = cursor.fetchall()
 
         # Slice to get only the target page (Pervasive doesn't support SKIP)
-        all_customers = [dict(zip(columns, row)) for row in rows]
+        all_customers = [dict(zip(columns, row, strict=False)) for row in rows]
         customers = all_customers[offset : offset + page_size]
         return customers, total
 
@@ -376,7 +376,7 @@ class GlassTraxService:
         if not result.rows:
             return None
 
-        customer = dict(zip([c.lower() for c in result.columns], result.rows[0]))
+        customer = dict(zip([c.lower() for c in result.columns], result.rows[0], strict=False))
 
         # Get contacts
         contacts_result = await self.agent_client.query_table(
@@ -396,7 +396,7 @@ class GlassTraxService:
 
         contacts = []
         for row in contacts_result.rows:
-            contact = dict(zip([c.lower() for c in contacts_result.columns], row))
+            contact = dict(zip([c.lower() for c in contacts_result.columns], row, strict=False))
             # Rename mobl_phone to mobile_phone
             if "mobl_phone" in contact:
                 contact["mobile_phone"] = contact.pop("mobl_phone")
@@ -425,7 +425,7 @@ class GlassTraxService:
             return None
 
         columns = [col[0].lower() for col in cursor.description]
-        customer = dict(zip(columns, row))
+        customer = dict(zip(columns, row, strict=False))
 
         # Get contacts
         contacts_query = """
@@ -447,7 +447,7 @@ class GlassTraxService:
         contact_rows = cursor.fetchall()
 
         contacts = [
-            {k: v.strip() if isinstance(v, str) else v for k, v in dict(zip(contact_cols, row)).items()}
+            {k: v.strip() if isinstance(v, str) else v for k, v in dict(zip(contact_cols, row, strict=False)).items()}
             for row in contact_rows
         ]
 
@@ -640,7 +640,7 @@ class GlassTraxService:
         # Convert rows to dicts and process
         orders = []
         for row in result.rows:
-            order = dict(zip([c.lower() for c in result.columns], row))
+            order = dict(zip([c.lower() for c in result.columns], row, strict=False))
             order["order_date"] = parse_glasstrax_date(order.get("order_date"))
             flag = order.get("open_closed_flag")
             order["status"] = "Open" if flag == "O" else "Closed" if flag == "C" else None
@@ -739,7 +739,7 @@ class GlassTraxService:
 
         all_orders = []
         for row in rows:
-            order = dict(zip(columns, row))
+            order = dict(zip(columns, row, strict=False))
             order["order_date"] = parse_glasstrax_date(order.get("order_date"))
             flag = order.get("open_closed_flag")
             order["status"] = "Open" if flag == "O" else "Closed" if flag == "C" else None
@@ -791,9 +791,9 @@ class GlassTraxService:
         if not result.rows:
             return None
 
-        header = dict(zip([c.lower() for c in result.columns], result.rows[0]))
+        header = dict(zip([c.lower() for c in result.columns], result.rows[0], strict=False))
 
-        # Get line items
+        # Get line items with glass details
         lines_result = await self.agent_client.query_table(
             table="sales_order_detail",
             columns=[
@@ -809,19 +809,106 @@ class GlassTraxService:
                 "size_1",
                 "size_2",
                 "open_closed_flag",
+                "overall_thickness",
+                "pattern",
             ],
             filters=[FilterCondition(column="so_no", operator="=", value=so_no)],
         )
 
         line_items = []
         for row in lines_result.rows:
-            item = dict(zip([c.lower() for c in lines_result.columns], row))
-            for key in ["item_id", "item_description", "cust_part_no", "open_closed_flag"]:
+            item = dict(zip([c.lower() for c in lines_result.columns], row, strict=False))
+            for key in ["item_id", "item_description", "cust_part_no", "open_closed_flag", "pattern"]:
                 if item.get(key) and isinstance(item[key], str):
                     item[key] = item[key].strip() or None
             line_items.append(item)
 
+        # Get processing info for all lines (fab and edgework)
+        processing_info = await self._get_line_processing_info_via_agent(so_no)
+
+        # Enrich line items with processing info and computed fields
+        for item in line_items:
+            line_no = item.get("so_line_no")
+            proc = processing_info.get(line_no, {})
+            item["has_fab"] = proc.get("has_fab", False)
+            item["edgework"] = proc.get("edgework")
+
+            # Compute block_size from size_1 x size_2
+            size_1 = item.get("size_1")
+            size_2 = item.get("size_2")
+            if size_1 is not None and size_2 is not None:
+                item["block_size"] = f"{size_1} x {size_2}"
+            else:
+                item["block_size"] = None
+
         return self._build_order_response(header, line_items)
+
+    async def _get_line_processing_info_via_agent(
+        self, so_no: int
+    ) -> dict[int, dict[str, Any]]:
+        """
+        Get processing info (fab, edgework) for all lines via agent.
+
+        Returns:
+            Dict mapping line_no to {has_fab: bool, edgework: str|None}
+        """
+        from api.services.agent_schemas import FilterCondition, JoinClause, OrderBy
+
+        # Query so_processing joined with processing_charges
+        proc_result = await self.agent_client.query_table(
+            table="so_processing",
+            alias="p",
+            columns=[
+                "p.so_line_no",
+                "pc.process_group",
+                "pc.description",
+            ],
+            filters=[
+                FilterCondition(column="p.so_no", operator="=", value=so_no),
+                FilterCondition(column="pc.process_group", operator="IN", value=["FAB", "EDGE"]),
+            ],
+            joins=[
+                JoinClause(
+                    table="processing_charges",
+                    alias="pc",
+                    join_type="INNER",
+                    on_left="p.process_id",
+                    on_right="pc.processing_id",
+                )
+            ],
+            order_by=[
+                OrderBy(column="p.so_line_no", direction="ASC"),
+                OrderBy(column="p.process_index", direction="ASC"),
+            ],
+        )
+
+        # Build processing info per line
+        result: dict[int, dict[str, Any]] = {}
+
+        for row in proc_result.rows:
+            row_dict = dict(zip([c.lower() for c in proc_result.columns], row, strict=False))
+            line_no = int(row_dict.get("so_line_no", 0))
+            process_group = row_dict.get("process_group")
+            if process_group and isinstance(process_group, str):
+                process_group = process_group.strip()
+            description = row_dict.get("description")
+            if description and isinstance(description, str):
+                description = description.strip()
+
+            if line_no not in result:
+                result[line_no] = {"has_fab": False, "edgework": None}
+
+            if process_group == "FAB":
+                result[line_no]["has_fab"] = True
+            elif process_group == "EDGE" and description:
+                # If multiple edge operations, concatenate with comma
+                existing = result[line_no]["edgework"]
+                if existing:
+                    result[line_no]["edgework"] = f"{existing}, {description}"
+                else:
+                    result[line_no]["edgework"] = description
+
+        return result
 
     def _get_order_by_number_direct(self, so_no: int) -> dict[str, Any] | None:
         """Get order by number via direct ODBC (direct mode)"""
@@ -844,9 +931,9 @@ class GlassTraxService:
             return None
 
         columns = [col[0].lower() for col in cursor.description]
-        header = dict(zip(columns, header_row))
+        header = dict(zip(columns, header_row, strict=False))
 
-        # Get line items
+        # Get line items with glass details
         lines_query = """
             SELECT
                 so_line_no,
@@ -860,7 +947,9 @@ class GlassTraxService:
                 total_extended_price,
                 size_1,
                 size_2,
-                open_closed_flag
+                open_closed_flag,
+                overall_thickness,
+                pattern
             FROM sales_order_detail
             WHERE so_no = ?
             ORDER BY so_line_no
@@ -872,13 +961,79 @@ class GlassTraxService:
 
         line_items = []
         for row in line_rows:
-            item = dict(zip(line_columns, row))
-            for key in ["item_id", "item_description", "cust_part_no", "open_closed_flag"]:
+            item = dict(zip(line_columns, row, strict=False))
+            for key in ["item_id", "item_description", "cust_part_no", "open_closed_flag", "pattern"]:
                 if item.get(key) and isinstance(item[key], str):
                     item[key] = item[key].strip() or None
             line_items.append(item)
 
+        # Get processing info for all lines (fab and edgework)
+        processing_info = self._get_line_processing_info_direct(cursor, so_no)
+
+        # Enrich line items with processing info and computed fields
+        for item in line_items:
+            line_no = item.get("so_line_no")
+            proc = processing_info.get(line_no, {})
+            item["has_fab"] = proc.get("has_fab", False)
+            item["edgework"] = proc.get("edgework")
+
+            # Compute block_size from size_1 x size_2
+            size_1 = item.get("size_1")
+            size_2 = item.get("size_2")
+            if size_1 is not None and size_2 is not None:
+                item["block_size"] = f"{size_1} x {size_2}"
+            else:
+                item["block_size"] = None
+
         return self._build_order_response(header, line_items)
+
+    def _get_line_processing_info_direct(
+        self, cursor: Any, so_no: int
+    ) -> dict[int, dict[str, Any]]:
+        """
+        Get processing info (fab, edgework) for all lines in an order.
+
+        Returns:
+            Dict mapping line_no to {has_fab: bool, edgework: str|None}
+        """
+        # Query for FAB and EDGE processing per line
+        processing_query = """
+            SELECT
+                p.so_line_no,
+                pc.process_group,
+                pc.description
+            FROM so_processing p
+            JOIN processing_charges pc ON p.process_id = pc.processing_id
+            WHERE p.so_no = ?
+              AND pc.process_group IN ('FAB', 'EDGE')
+            ORDER BY p.so_line_no, p.process_index
+        """
+
+        cursor.execute(processing_query, [so_no])
+        rows = cursor.fetchall()
+
+        # Build processing info per line
+        result: dict[int, dict[str, Any]] = {}
+
+        for row in rows:
+            line_no = int(row[0])
+            process_group = row[1].strip() if row[1] else None
+            description = row[2].strip() if row[2] else None
+
+            if line_no not in result:
+                result[line_no] = {"has_fab": False, "edgework": None}
+
+            if process_group == "FAB":
+                result[line_no]["has_fab"] = True
+            elif process_group == "EDGE" and description:
+                # If multiple edge operations, concatenate with comma
+                existing = result[line_no]["edgework"]
+                if existing:
+                    result[line_no]["edgework"] = f"{existing}, {description}"
+                else:
+                    result[line_no]["edgework"] = description
+
+        return result
 
     def _build_order_response(
         self, header: dict[str, Any], line_items: list[dict[str, Any]]
@@ -958,6 +1113,108 @@ class GlassTraxService:
             "total_lines": len(line_items),
             "total_qty": total_qty,
             "total_amount": total_amount,
+        }
+
+    async def check_order_exists(self, so_no: int) -> dict[str, Any]:
+        """
+        Lightweight check if an order exists with basic info.
+
+        Args:
+            so_no: Sales order number (numeric)
+
+        Returns:
+            Dict with exists flag and basic order info if found
+        """
+        if self.is_agent_mode:
+            return await self._check_order_exists_via_agent(so_no)
+        else:
+            return self._check_order_exists_direct(so_no)
+
+    async def _check_order_exists_via_agent(self, so_no: int) -> dict[str, Any]:
+        """Check order exists via agent (agent mode)"""
+        from api.services.agent_schemas import FilterCondition, JoinClause
+
+        result = await self.agent_client.query_table(
+            table="sales_orders_headers",
+            alias="h",
+            columns=[
+                "h.so_no",
+                "h.customer_id",
+                "c.customer_name",
+                "h.customer_po_no",
+                "h.job_name",
+                "h.open_closed_flag",
+            ],
+            filters=[FilterCondition(column="h.so_no", operator="=", value=so_no)],
+            joins=[
+                JoinClause(
+                    table="customer",
+                    alias="c",
+                    join_type="LEFT",
+                    on_left="h.customer_id",
+                    on_right="c.customer_id",
+                )
+            ],
+            limit=1,
+        )
+
+        if not result.rows:
+            return {"exists": False}
+
+        row = dict(zip([c.lower() for c in result.columns], result.rows[0], strict=False))
+        flag = row.get("open_closed_flag")
+
+        def strip_val(val: Any) -> Any:
+            return val.strip() if isinstance(val, str) and val else val if val else None
+
+        return {
+            "exists": True,
+            "so_no": row.get("so_no"),
+            "customer_id": strip_val(row.get("customer_id")),
+            "customer_name": strip_val(row.get("customer_name")),
+            "customer_po_no": strip_val(row.get("customer_po_no")),
+            "job_name": strip_val(row.get("job_name")),
+            "status": "Open" if flag == "O" else "Closed" if flag == "C" else None,
+        }
+
+    def _check_order_exists_direct(self, so_no: int) -> dict[str, Any]:
+        """Check order exists via direct ODBC (direct mode)"""
+        cursor = self._get_cursor()
+
+        query = """
+            SELECT TOP 1
+                h.so_no,
+                h.customer_id,
+                c.customer_name,
+                h.customer_po_no,
+                h.job_name,
+                h.open_closed_flag
+            FROM sales_orders_headers h
+            LEFT JOIN customer c ON h.customer_id = c.customer_id
+            WHERE h.so_no = ?
+        """
+
+        cursor.execute(query, [so_no])
+        row = cursor.fetchone()
+
+        if not row:
+            return {"exists": False}
+
+        columns = [col[0].lower() for col in cursor.description]
+        data = dict(zip(columns, row, strict=False))
+        flag = data.get("open_closed_flag")
+
+        def strip_val(val: Any) -> Any:
+            return val.strip() if isinstance(val, str) and val else val if val else None
+
+        return {
+            "exists": True,
+            "so_no": data.get("so_no"),
+            "customer_id": strip_val(data.get("customer_id")),
+            "customer_name": strip_val(data.get("customer_name")),
+            "customer_po_no": strip_val(data.get("customer_po_no")),
+            "job_name": strip_val(data.get("job_name")),
+            "status": "Open" if flag == "O" else "Closed" if flag == "C" else None,
         }
 
     # ========================================
