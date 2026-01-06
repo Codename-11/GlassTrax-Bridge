@@ -84,10 +84,10 @@ Auto-refreshes every 5 seconds.
 
 Configure GlassTrax Bridge from the portal:
 
-- **Database connection** - DSN, friendly name, and timeout
+- **Data Source** - Choose between Direct ODBC or Remote Agent mode, configure connection settings
 - **Admin credentials** - Change admin password
-- **Agent configuration** - Connect to Windows GlassTrax API Agent
 - **Application settings** - Timezone and logging options
+- **API Access** - View API base URL and documentation links
 
 ![Settings](/screenshots/glasstrax_bridge_settings_layout.png)
 

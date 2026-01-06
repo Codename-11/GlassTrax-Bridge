@@ -543,13 +543,19 @@ export function SettingsPage() {
                     </Button>
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    {dsnsData?.architecture && (
-                      <span className="font-medium">{dsnsData.architecture} DSNs. </span>
-                    )}
                     {dsnsData?.pervasive_dsns.length
-                      ? `${dsnsData.pervasive_dsns.length} Pervasive DSN(s) found.`
-                      : 'No Pervasive DSNs found.'}
+                      ? `${dsnsData.pervasive_dsns.length} Pervasive DSN(s) available.`
+                      : dsnsData?.architecture?.includes('64-bit')
+                        ? 'No 32-bit DSNs found. Pervasive ODBC requires 32-bit Python.'
+                        : 'No Pervasive DSNs found.'}
                   </p>
+                  {dsnsData?.architecture?.includes('64-bit') &&
+                    !dsnsData?.architecture?.includes('agent') && (
+                      <div className="mt-2 rounded bg-yellow-50 p-2 text-xs text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300">
+                        ⚠️ Running in 64-bit mode. Direct ODBC to Pervasive requires 32-bit Python.
+                        Consider using Agent mode instead.
+                      </div>
+                    )}
                   {dsnTestResult && (
                     <div
                       className={`rounded p-2 text-xs ${
@@ -716,6 +722,55 @@ export function SettingsPage() {
               </p>
             </div>
             <Switch checked={formData.database.readonly} disabled={true} />
+          </div>
+
+          <Separator />
+
+          {/* API Access Info */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <LinkIcon className="h-4 w-4" />
+              <Label className="text-sm font-medium">API Access</Label>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3 text-sm">
+              <div className="grid gap-2 md:grid-cols-2">
+                <div>
+                  <span className="text-muted-foreground text-xs">Base URL</span>
+                  <div className="font-mono text-xs">{window.location.origin}/api/v1</div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href="/api/docs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                  >
+                    <BookOpenIcon className="h-3 w-3" />
+                    Swagger UI
+                  </a>
+                  <span className="text-muted-foreground">·</span>
+                  <a
+                    href="/api/redoc"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                  >
+                    <BookOpenIcon className="h-3 w-3" />
+                    ReDoc
+                  </a>
+                  <span className="text-muted-foreground">·</span>
+                  <a
+                    href="/health"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                  >
+                    <CheckCircleIcon className="h-3 w-3" />
+                    Health
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1063,6 +1118,19 @@ function CheckCircleIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  )
+}
+
+function LinkIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
       />
     </svg>
   )

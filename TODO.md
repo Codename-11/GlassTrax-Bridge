@@ -85,3 +85,4 @@ See `docs-internal/GLASSTRAX-DATABASE.md` for full schema reference.
 2. **Wire up performance settings** - Medium effort. Need to test timeout behavior with Pervasive.
 3. **Implement caching** - Higher effort. Need to decide on caching strategy and invalidation.
 4. **Gate exports behind flag** - Low effort once we decide what "exports" means (CSV download? API endpoints?).
+5. **Custom API base URL** - Add optional `api.base_url` config for reverse proxy/custom port setups. Currently uses `window.location.origin` which works for same-origin deployments but not for external sharing or custom paths.

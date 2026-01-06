@@ -124,7 +124,7 @@ This allows everything except ODBC to run in containers while database queries a
    docker-compose up -d
    ```
 
-You can also configure these settings in the portal's Settings page under "GlassTrax API Agent".
+You can also configure these settings in the portal's Settings page under "Data Source" → "Agent" mode.
 
 ::: tip
 For detailed agent setup instructions, see [Agent Setup](/guide/agent-setup).
