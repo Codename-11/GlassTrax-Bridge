@@ -415,112 +415,291 @@ export function SettingsPage() {
         </Alert>
       )}
 
-      {/* Database Settings */}
+      {/* Data Source Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DatabaseIcon className="h-5 w-5" />
-            Database Settings
+            Data Source
+            <Badge
+              variant={formData.agent.enabled ? 'default' : 'secondary'}
+              className="ml-2 text-xs"
+            >
+              {formData.agent.enabled ? 'Remote Agent' : 'Direct ODBC'}
+            </Badge>
           </CardTitle>
-          <CardDescription>GlassTrax database connection configuration</CardDescription>
+          <CardDescription>
+            Configure how the API connects to the GlassTrax database
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="friendly_name">Display Name</Label>
-              <Input
-                id="friendly_name"
-                value={formData.database.friendly_name}
-                onChange={(e) => updateDatabase('friendly_name', e.target.value)}
-                placeholder="e.g., TGI Database"
-              />
-              <p className="text-muted-foreground text-xs">Shown in the dashboard</p>
-            </div>
+          {/* Display Name - applies to both modes */}
+          <div className="max-w-md space-y-2">
+            <Label htmlFor="friendly_name">Display Name</Label>
+            <Input
+              id="friendly_name"
+              value={formData.database.friendly_name}
+              onChange={(e) => updateDatabase('friendly_name', e.target.value)}
+              placeholder="e.g., TGI Database"
+            />
+            <p className="text-muted-foreground text-xs">Shown in the dashboard</p>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="dsn">
-                ODBC Data Source Name (DSN)
-                <Badge variant="outline" className="ml-2 text-xs">
-                  Restart Required
-                </Badge>
-              </Label>
-              <div className="flex gap-2">
-                <Select
-                  value={formData.database.dsn}
-                  onValueChange={(value) => {
-                    updateDatabase('dsn', value)
-                    setDsnTestResult(null) // Clear test result when DSN changes
-                  }}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select DSN" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dsnsData?.dsns.map((dsn) => (
-                      <SelectItem key={dsn.name} value={dsn.name}>
-                        <div className="flex items-center gap-2">
-                          <span>{dsn.name}</span>
-                          {dsn.is_pervasive && (
-                            <span className="text-xs font-medium text-green-600">(Pervasive)</span>
+          <Separator />
+
+          {/* Connection Mode Toggle */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label className="text-base">Connection Mode</Label>
+              <p className="text-muted-foreground text-sm">
+                {formData.agent.enabled
+                  ? 'Using remote Windows agent for database queries'
+                  : 'Direct ODBC connection to local database'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span
+                className={`text-sm ${!formData.agent.enabled ? 'font-medium' : 'text-muted-foreground'}`}
+              >
+                Direct
+              </span>
+              <Switch
+                checked={formData.agent.enabled}
+                onCheckedChange={(checked) => {
+                  updateAgent('enabled', checked)
+                  // Clear test results when switching modes
+                  setDsnTestResult(null)
+                  setAgentTestResult(null)
+                }}
+              />
+              <span
+                className={`text-sm ${formData.agent.enabled ? 'font-medium' : 'text-muted-foreground'}`}
+              >
+                Agent
+              </span>
+            </div>
+          </div>
+
+          {/* Direct ODBC Settings */}
+          {!formData.agent.enabled && (
+            <div className="space-y-4 rounded-lg border border-dashed p-4">
+              <div className="flex items-center gap-2">
+                <DatabaseIcon className="h-4 w-4" />
+                <h4 className="font-medium">Direct ODBC Connection</h4>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Connect directly to GlassTrax via ODBC. Requires the API to run on Windows with
+                Pervasive ODBC drivers installed.
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="dsn">
+                    ODBC Data Source Name (DSN)
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      Restart Required
+                    </Badge>
+                  </Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.database.dsn}
+                      onValueChange={(value) => {
+                        updateDatabase('dsn', value)
+                        setDsnTestResult(null)
+                      }}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select DSN" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dsnsData?.dsns.map((dsn) => (
+                          <SelectItem key={dsn.name} value={dsn.name}>
+                            <div className="flex items-center gap-2">
+                              <span>{dsn.name}</span>
+                              {dsn.is_pervasive && (
+                                <span className="text-xs font-medium text-green-600">
+                                  (Pervasive)
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {formData.database.dsn &&
+                          dsnsData?.dsns &&
+                          !dsnsData.dsns.find((d) => d.name === formData.database.dsn) && (
+                            <SelectItem value={formData.database.dsn}>
+                              {formData.database.dsn} (current)
+                            </SelectItem>
                           )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                    {/* Allow current value if not in list */}
-                    {formData.database.dsn &&
-                      dsnsData?.dsns &&
-                      !dsnsData.dsns.find((d) => d.name === formData.database.dsn) && (
-                        <SelectItem value={formData.database.dsn}>
-                          {formData.database.dsn} (current)
-                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => testDsnMutation.mutate(formData.database.dsn)}
+                      disabled={!formData.database.dsn || testDsnMutation.isPending}
+                    >
+                      {testDsnMutation.isPending ? 'Testing...' : 'Test'}
+                    </Button>
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    {dsnsData?.architecture && (
+                      <span className="font-medium">{dsnsData.architecture} DSNs. </span>
+                    )}
+                    {dsnsData?.pervasive_dsns.length
+                      ? `${dsnsData.pervasive_dsns.length} Pervasive DSN(s) found.`
+                      : 'No Pervasive DSNs found.'}
+                  </p>
+                  {dsnTestResult && (
+                    <div
+                      className={`rounded p-2 text-xs ${
+                        dsnTestResult.success
+                          ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
+                          : 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
+                      }`}
+                    >
+                      {dsnTestResult.success ? '✓' : '✗'} {dsnTestResult.message}
+                      {dsnTestResult.tables_found !== undefined && (
+                        <span className="ml-1">({dsnTestResult.tables_found} tables)</span>
                       )}
-                  </SelectContent>
-                </Select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="timeout">Connection Timeout (seconds)</Label>
+                  <Input
+                    id="timeout"
+                    type="number"
+                    min={1}
+                    max={300}
+                    value={formData.database.timeout}
+                    onChange={(e) => updateDatabase('timeout', parseInt(e.target.value) || 30)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Remote Agent Settings */}
+          {formData.agent.enabled && (
+            <div className="space-y-4 rounded-lg border border-dashed p-4">
+              <div className="flex items-center gap-2">
+                <ServerIcon className="h-4 w-4" />
+                <h4 className="font-medium">Remote Agent Connection</h4>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Connect to a Windows-hosted GlassTrax API Agent. Required when running in Docker or
+                on non-Windows systems.
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="agent_url">Agent URL</Label>
+                  <Input
+                    id="agent_url"
+                    value={formData.agent.url}
+                    onChange={(e) => updateAgent('url', e.target.value)}
+                    placeholder="http://192.168.1.100:8001"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Full URL of the Windows machine running the agent
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="agent_key">Agent API Key</Label>
+                  <Input
+                    id="agent_key"
+                    type="password"
+                    value={formData.agent.api_key}
+                    onChange={(e) => updateAgent('api_key', e.target.value)}
+                    placeholder="gta_..."
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    API key from agent console on first run
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="agent_timeout">Request Timeout (seconds)</Label>
+                  <Input
+                    id="agent_timeout"
+                    type="number"
+                    min={1}
+                    max={300}
+                    value={formData.agent.timeout}
+                    onChange={(e) => updateAgent('timeout', parseInt(e.target.value) || 30)}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => testDsnMutation.mutate(formData.database.dsn)}
-                  disabled={!formData.database.dsn || testDsnMutation.isPending}
+                  onClick={() => {
+                    setAgentTestResult(null)
+                    testAgentMutation.mutate({
+                      url: formData.agent.url,
+                      api_key: formData.agent.api_key,
+                    })
+                  }}
+                  disabled={
+                    !formData.agent.url || !formData.agent.api_key || testAgentMutation.isPending
+                  }
                 >
-                  {testDsnMutation.isPending ? 'Testing...' : 'Test'}
+                  {testAgentMutation.isPending ? 'Testing...' : 'Test Connection'}
                 </Button>
               </div>
-              <p className="text-muted-foreground text-xs">
-                {dsnsData?.architecture && (
-                  <span className="font-medium">{dsnsData.architecture} DSNs. </span>
-                )}
-                {dsnsData?.pervasive_dsns.length
-                  ? `${dsnsData.pervasive_dsns.length} Pervasive DSN(s) found.`
-                  : 'No Pervasive DSNs found.'}
-              </p>
-              {dsnTestResult && (
-                <div
-                  className={`rounded p-2 text-xs ${
-                    dsnTestResult.success
-                      ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
-                      : 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
-                  }`}
-                >
-                  {dsnTestResult.success ? '✓' : '✗'} {dsnTestResult.message}
-                  {dsnTestResult.tables_found !== undefined && (
-                    <span className="ml-1">({dsnTestResult.tables_found} tables)</span>
-                  )}
-                </div>
-              )}
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="timeout">Connection Timeout (seconds)</Label>
-              <Input
-                id="timeout"
-                type="number"
-                min={1}
-                max={300}
-                value={formData.database.timeout}
-                onChange={(e) => updateDatabase('timeout', parseInt(e.target.value) || 30)}
-              />
+              {agentTestResult && (
+                <Alert variant={agentTestResult.connected ? 'default' : 'destructive'}>
+                  {agentTestResult.connected ? (
+                    <CheckCircleIcon className="h-4 w-4" />
+                  ) : (
+                    <XCircleIcon className="h-4 w-4" />
+                  )}
+                  <AlertTitle>
+                    {agentTestResult.connected ? 'Connected' : 'Connection Failed'}
+                  </AlertTitle>
+                  <AlertDescription>
+                    {agentTestResult.message}
+                    {agentTestResult.agent_version && (
+                      <span className="mt-1 block text-xs">
+                        Agent version: {agentTestResult.agent_version}
+                      </span>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Separator />
+
+              <div className="text-muted-foreground text-sm">
+                <p className="mb-2 font-medium">Agent Setup:</p>
+                <ol className="list-inside list-decimal space-y-1 text-xs">
+                  <li>
+                    On Windows, start the agent:{' '}
+                    <code className="bg-muted rounded px-1 py-0.5">.\agent\run_agent.bat</code>
+                  </li>
+                  <li>Copy the API key shown on first run</li>
+                  <li>Enter the agent URL and API key above</li>
+                </ol>
+                <p className="mt-2">
+                  <a
+                    href="https://codename-11.github.io/GlassTrax-Bridge/guide/agent-setup.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary inline-flex items-center gap-1 hover:underline"
+                  >
+                    <BookOpenIcon className="h-3 w-3" />
+                    View agent setup documentation
+                  </a>
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           <Separator />
 
@@ -533,8 +712,7 @@ export function SettingsPage() {
                 </Badge>
               </div>
               <p className="text-muted-foreground text-xs">
-                GlassTrax Bridge is designed for read-only access to protect your ERP data. This
-                setting cannot be changed through the UI.
+                GlassTrax Bridge is designed for read-only access to protect your ERP data.
               </p>
             </div>
             <Switch checked={formData.database.readonly} disabled={true} />
@@ -759,160 +937,6 @@ export function SettingsPage() {
                 {passwordMutation.isPending ? 'Changing...' : 'Change Password'}
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Agent Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ServerIcon className="h-5 w-5" />
-            GlassTrax API Agent
-          </CardTitle>
-          <CardDescription>
-            Configure connection to Windows GlassTrax API Agent for database access
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert>
-            <ServerIcon className="h-4 w-4" />
-            <AlertTitle>Agent Mode</AlertTitle>
-            <AlertDescription>
-              When enabled, the API connects to a Windows-hosted agent for GlassTrax database
-              queries. The agent handles ODBC connections to Pervasive SQL.
-            </AlertDescription>
-          </Alert>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Enable Agent</Label>
-              <p className="text-muted-foreground text-xs">
-                Connect to GlassTrax API Agent for database queries
-              </p>
-            </div>
-            <Switch
-              checked={formData.agent.enabled}
-              onCheckedChange={(checked) => updateAgent('enabled', checked)}
-            />
-          </div>
-
-          {formData.agent.enabled && (
-            <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label htmlFor="agent_url">Agent URL</Label>
-                <Input
-                  id="agent_url"
-                  value={formData.agent.url}
-                  onChange={(e) => updateAgent('url', e.target.value)}
-                  placeholder="http://192.168.1.100:8001"
-                />
-                <p className="text-muted-foreground text-xs">
-                  Full URL of the Windows machine running the GlassTrax API Agent
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="agent_key">Agent API Key</Label>
-                <Input
-                  id="agent_key"
-                  type="password"
-                  value={formData.agent.api_key}
-                  onChange={(e) => updateAgent('api_key', e.target.value)}
-                  placeholder="gta_..."
-                />
-                <p className="text-muted-foreground text-xs">
-                  API key generated when the agent first starts
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="agent_timeout">Timeout (seconds)</Label>
-                <Input
-                  id="agent_timeout"
-                  type="number"
-                  min={1}
-                  max={300}
-                  value={formData.agent.timeout}
-                  onChange={(e) => updateAgent('timeout', parseInt(e.target.value) || 30)}
-                />
-                <p className="text-muted-foreground text-xs">
-                  Request timeout for agent queries (default: 30)
-                </p>
-              </div>
-
-              {/* Test Agent Connection */}
-              <div className="pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setAgentTestResult(null)
-                    testAgentMutation.mutate({
-                      url: formData.agent.url,
-                      api_key: formData.agent.api_key,
-                    })
-                  }}
-                  disabled={
-                    !formData.agent.url || !formData.agent.api_key || testAgentMutation.isPending
-                  }
-                >
-                  {testAgentMutation.isPending ? 'Testing...' : 'Test Connection'}
-                </Button>
-              </div>
-
-              {agentTestResult && (
-                <Alert variant={agentTestResult.connected ? 'success' : 'destructive'}>
-                  {agentTestResult.connected ? (
-                    <CheckCircleIcon className="h-4 w-4" />
-                  ) : (
-                    <XCircleIcon className="h-4 w-4" />
-                  )}
-                  <AlertTitle>
-                    {agentTestResult.connected ? 'Connected' : 'Connection Failed'}
-                  </AlertTitle>
-                  <AlertDescription>
-                    {agentTestResult.message}
-                    {agentTestResult.agent_version && (
-                      <span className="mt-1 block text-xs">
-                        Agent version: {agentTestResult.agent_version}
-                      </span>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          )}
-
-          <Separator />
-
-          <div className="text-muted-foreground text-sm">
-            <p className="mb-2 font-medium">Agent Setup:</p>
-            <ol className="list-inside list-decimal space-y-1 text-xs">
-              <li>
-                On Windows, start the agent:{' '}
-                <code className="bg-muted rounded px-1 py-0.5">.\agent\run_agent.bat</code>
-              </li>
-              <li>Copy the API key shown on first run</li>
-              <li>Enable agent mode above and enter the URL and API key</li>
-              <li>
-                For Docker:{' '}
-                <code className="bg-muted rounded px-1 py-0.5">
-                  AGENT_ENABLED=true AGENT_URL=http://192.168.1.100:8001 docker-compose up -d
-                </code>
-              </li>
-            </ol>
-            <p className="mt-2">
-              <a
-                href="https://codename-11.github.io/GlassTrax-Bridge/guide/agent-setup.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary inline-flex items-center gap-1 hover:underline"
-              >
-                <BookOpenIcon className="h-3 w-3" />
-                View agent setup documentation
-              </a>
-            </p>
           </div>
         </CardContent>
       </Card>
