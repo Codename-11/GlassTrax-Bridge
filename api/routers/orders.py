@@ -325,12 +325,12 @@ async def get_order(
         # Apply field selection if requested
         if fields:
             field_list = [f.strip() for f in fields.split(",")]
-            # Convert to dict, filter, and reconstruct
-            order_dict = order.model_dump()
+            # Convert to dict with JSON-serializable values (mode="json" converts dates to ISO strings)
+            order_dict = order.model_dump(mode="json")
             # Also convert line_items to dicts if present
             if order_dict.get("line_items"):
                 order_dict["line_items"] = [
-                    item.model_dump() if hasattr(item, "model_dump") else item
+                    item.model_dump(mode="json") if hasattr(item, "model_dump") else item
                     for item in (order.line_items or [])
                 ]
             filtered_data = filter_response_fields(order_dict, field_list)
