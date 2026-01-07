@@ -34,8 +34,6 @@ curl http://localhost:8001/health
 Create a `docker-compose.yml` file on your Docker host:
 
 ```yaml
-version: '3.8'
-
 services:
   glasstrax-bridge:
     image: ghcr.io/codename-11/glasstrax-bridge:latest
@@ -43,7 +41,7 @@ services:
     ports:
       - "3000:80"
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data  # Persists database AND config
     environment:
       # GlassTrax API Agent Configuration
       - GLASSTRAX_AGENT_ENABLED=true
@@ -67,8 +65,6 @@ For cleaner configuration, you can use a `.env` file instead of hardcoding value
 
 **docker-compose.yml:**
 ```yaml
-version: '3.8'
-
 services:
   glasstrax-bridge:
     image: ghcr.io/codename-11/glasstrax-bridge:latest
@@ -76,7 +72,7 @@ services:
     ports:
       - "${PORT:-3000}:80"
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data  # Persists database AND config
     environment:
       - GLASSTRAX_AGENT_ENABLED=${AGENT_ENABLED:-false}
       - GLASSTRAX_AGENT_URL=${AGENT_URL:-}
@@ -150,18 +146,12 @@ cd GlassTrax-Bridge
 npm install
 ```
 
-#### 3. Configure Application
+#### 3. Configure ODBC DSN
 
-First, set up your ODBC DSN in Windows ODBC Data Source Administrator (32-bit).
+Set up your ODBC DSN in Windows ODBC Data Source Administrator (32-bit).
 
-Then copy and edit the configuration:
-
-```bash
-copy config.example.yaml config.yaml
-notepad config.yaml
-```
-
-Key settings in `config.yaml`:
+::: tip Configuration
+Config is auto-created at `data/config.yaml` on first run. You can configure the DSN via the **Settings** page in the portal, or edit the file directly:
 
 ```yaml
 database:
@@ -170,6 +160,7 @@ database:
   readonly: true
   timeout: 30
 ```
+:::
 
 #### 4. Initialize Database
 
@@ -207,7 +198,7 @@ The default admin password is `admin`. Change it immediately!
 2. Go to **Settings** → **Admin Password**
 3. Enter and confirm your new password
 
-**Option 2: Via config.yaml**
+**Option 2: Via data/config.yaml**
 
 Generate a bcrypt hash using the tool below (no Python required):
 
@@ -228,7 +219,7 @@ docker run --rm python:3.11-slim python -c "import bcrypt; print(bcrypt.hashpw(b
 ```
 :::
 
-Add the hash to `config.yaml`:
+Add the hash to `data/config.yaml`:
 
 ```yaml
 admin:
@@ -284,6 +275,7 @@ curl -H "X-API-Key: gtb_your_admin_key" http://localhost:3000/api/v1/customers?l
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `GLASSTRAX_CONFIG_PATH` | Custom config file path | `data/config.yaml` |
 | `GLASSTRAX_AGENT_ENABLED` | Enable agent mode for database access | `false` |
 | `GLASSTRAX_AGENT_URL` | URL of Windows agent (e.g., `http://192.168.1.100:8001`) | - |
 | `GLASSTRAX_AGENT_KEY` | API key from agent first run (`gta_...`) | - |

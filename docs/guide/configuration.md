@@ -4,7 +4,22 @@ GlassTrax Bridge is configured through `config.yaml` and environment variables.
 
 ## config.yaml
 
-The main configuration file in the project root.
+### File Location
+
+The config file location depends on your deployment:
+
+| Deployment | Config Location | Notes |
+|------------|-----------------|-------|
+| **Docker** | `./data/config.yaml` | Auto-created, persisted via volume mount |
+| **Windows AIO** | `./data/config.yaml` or `./config.yaml` | Falls back to project root for compatibility |
+
+::: tip Docker Users
+In Docker, config is stored in the `data/` directory alongside the SQLite database. This ensures your settings persist when the container restarts. The single volume mount (`./data:/app/data`) handles both database and config.
+:::
+
+::: tip First Run
+On first run, a default `config.yaml` is automatically created. You can edit it via the Settings page in the Portal or directly edit the file.
+:::
 
 ### Database Connection
 
@@ -67,6 +82,7 @@ Override settings with environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `GLASSTRAX_CONFIG_PATH` | `data/config.yaml` | Custom config file path |
 | `GLASSTRAX_HOST` | `0.0.0.0` | API bind address |
 | `GLASSTRAX_PORT` | `8000` | API port |
 | `GLASSTRAX_DEBUG` | `false` | Debug mode |

@@ -1,5 +1,3 @@
-version: '3.8'
-
 # GlassTrax Bridge - Docker Compose
 # Documentation: https://codename-11.github.io/GlassTrax-Bridge/
 #
@@ -21,10 +19,9 @@ services:
     ports:
       - "${PORT:-3000}:80"
     volumes:
-      # Persist SQLite database
+      # Persist SQLite database AND config.yaml
+      # Config is auto-created in data/ on first run
       - ./data:/app/data
-      # Optional: Mount custom config
-      # - ./config.yaml:/app/config.yaml:ro
     environment:
       # GlassTrax API Agent Configuration
       - GLASSTRAX_AGENT_ENABLED=${AGENT_ENABLED:-false}
@@ -65,7 +62,11 @@ services:
 #
 # Default admin login:
 #   Username: admin
-#   Password: admin (CHANGE THIS via Settings page or config.yaml)
+#   Password: admin (CHANGE THIS via Settings page)
+#
+# Configuration:
+#   Config file is stored at ./data/config.yaml (auto-created on first run)
+#   Edit via Settings page in the Portal, or directly edit the file
 #
 # =============================================================================
 # URLS

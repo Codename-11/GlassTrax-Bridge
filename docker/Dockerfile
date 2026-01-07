@@ -48,8 +48,9 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy API source code
+# Note: config.yaml is NOT copied here - it's auto-created in data/ on first run
+# This ensures config is persisted via the data volume mount
 COPY api/ ./api/
-COPY config.example.yaml ./config.yaml
 COPY VERSION ./
 
 # Copy built portal from stage 1
@@ -65,7 +66,8 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Create data directory for SQLite
+# Create data directory for SQLite database and config
+# This directory is volume-mounted to persist data between container restarts
 RUN mkdir -p /app/data && chmod 777 /app/data
 
 # Environment variables for API proxy

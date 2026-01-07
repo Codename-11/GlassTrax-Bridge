@@ -19,7 +19,7 @@ A multi-tenant API platform for secure, read-only access to GlassTrax ERP data v
 
 - **REST API Server** - FastAPI-based API with OpenAPI documentation
 - **Admin Portal** - React web interface for managing API keys and tenants
-- **Settings UI** - Edit config.yaml from the portal (preserves comments)
+- **Settings UI** - Edit `data/config.yaml` from the portal (preserves comments)
 - **Multi-Tenant Architecture** - Isolate access by application/tenant
 - **API Key Authentication** - Secure, hashed key storage with bcrypt
 - **API Key Expiration** - Automatic enforcement of key expiration dates
@@ -100,10 +100,6 @@ cd GlassTrax-Bridge
 # Install Python dependencies
 python32\python.exe -m pip install -r requirements.txt
 
-# Configure
-copy config.example.yaml config.yaml
-notepad config.yaml  # Set your DSN
-
 # Initialize database
 python32\python.exe -m alembic upgrade head
 
@@ -112,6 +108,8 @@ python32\python.exe -m alembic upgrade head
 ```
 
 Access at `http://localhost:8000` (Portal and API on one port).
+
+> **Note**: Config is auto-created at `data/config.yaml` on first run. Configure your DSN via the Settings page or edit the file directly.
 
 ### URLs by Deployment
 
@@ -141,10 +139,6 @@ cd GlassTrax-Bridge
 python32\python.exe -m pip install -r requirements.txt
 npm install
 
-# Configure
-copy config.example.yaml config.yaml
-notepad config.yaml  # Set your DSN
-
 # Initialize database
 python32\python.exe -m alembic upgrade head
 
@@ -152,19 +146,21 @@ python32\python.exe -m alembic upgrade head
 .\run_dev.bat
 ```
 
+> Config is auto-created at `data/config.yaml` on first run. Edit via Settings page or directly.
+
 Development server runs at `http://localhost:5173` with Vite proxying API requests. Documentation is available at [GitHub Pages](https://codename-11.github.io/GlassTrax-Bridge/).
 
 ## Authentication
 
 ### Admin Portal Login
 
-> ⚠️ **Security Warning**: The default password is `admin`. Change it immediately after first login via the Settings page or by setting `password_hash` in `config.yaml`.
+> ⚠️ **Security Warning**: The default password is `admin`. Change it immediately after first login via the Settings page or by setting `password_hash` in `data/config.yaml`.
 
 Two authentication methods are supported:
 
 1. **Username/Password** - Default: `admin` / `admin`
 
-   Change via Settings page in the portal, or set a bcrypt hash in `config.yaml`:
+   Change via Settings page in the portal, or set a bcrypt hash in `data/config.yaml`:
    ```yaml
    admin:
      username: "admin"
@@ -368,18 +364,18 @@ Starts all services in a single terminal with color-coded output.
 | Issue | Solution |
 |-------|----------|
 | Driver not found | Install Pervasive ODBC client, verify with `pyodbc.drivers()` |
-| Connection timeout | Increase `timeout` in config.yaml |
+| Connection timeout | Increase `timeout` in `data/config.yaml` |
 | API key invalid | Verify key is active and not expired |
 | CORS errors | Check API server is running on expected port |
 | Migration errors | Run `alembic upgrade head`, check `alembic current` |
 
 ## Security Notes
 
-- **Change default password** - Set `password_hash` in config.yaml for production
+- **Change default password** - Set `password_hash` in `data/config.yaml` for production
 - **Secure API keys** - Keys are shown only once when created
 - **Key expiration** - Expired keys are automatically rejected
 - **Read-only database** - All GlassTrax connections are read-only by design
-- **Config files gitignored** - `config.yaml` and `agent_config.yaml` contain secrets
+- **Config files gitignored** - `data/config.yaml` and `agent_config.yaml` contain secrets
 
 ## Disclaimer
 

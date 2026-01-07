@@ -17,9 +17,15 @@ else
     echo " Mode: Standalone (no GlassTrax access)"
 fi
 
+# Config is stored in data/ directory (persisted via volume mount)
+if [ -f "/app/data/config.yaml" ]; then
+    echo " Config:     /app/data/config.yaml (persisted)"
+else
+    echo " Config:     /app/data/config.yaml (will be created on first run)"
+fi
+
 echo ""
 echo " Portal:     http://localhost:3000"
-echo " User Docs:  http://localhost:3000/docs"
 echo " API:        http://localhost:3000/api/v1"
 echo " Swagger:    http://localhost:3000/api/docs"
 echo ""

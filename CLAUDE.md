@@ -177,7 +177,7 @@ GlassTrax-Bridge/
 ├── VERSION                   # Central version file
 ├── CLAUDE.md                 # Claude context (this file)
 ├── README.md                 # Project documentation
-├── config.yaml               # Database & app configuration
+├── config.example.yaml       # Example configuration (copy to data/config.yaml)
 ├── agent_config.yaml         # Agent configuration (Windows)
 ├── pyproject.toml            # Python project config (ruff, pyright, pytest)
 ├── requirements.txt          # Python dependencies
@@ -217,7 +217,7 @@ GlassTrax-Bridge/
 │   ├── env.py                # Migration environment
 │   ├── versions/             # Migration scripts
 │   └── README.md             # Migration guide
-├── data/                     # SQLite database (gitignored)
+├── data/                     # SQLite database + config.yaml (gitignored, Docker volume)
 ├── python32/                 # Bundled 32-bit Python for ODBC
 ├── docker/                   # Docker configuration
 │   ├── Dockerfile            # Single container build
@@ -250,6 +250,14 @@ GlassTrax-Bridge/
 ## Configuration
 
 ### config.yaml
+
+**Location** (in order of precedence):
+1. `GLASSTRAX_CONFIG_PATH` environment variable
+2. `data/config.yaml` (default - auto-created, persisted in Docker)
+3. `config.yaml` in project root (legacy fallback)
+
+In Docker, config is stored in `data/` so it persists via the volume mount.
+On Windows AIO, it falls back to project root for backwards compatibility.
 
 ```yaml
 database:
@@ -315,7 +323,7 @@ Located in: `portal/src/components/ui/status-indicator.tsx`
 
 ## Settings Page
 
-The portal has a Settings page (`/settings`) that allows editing config.yaml:
+The portal has a Settings page (`/settings`) that allows editing `data/config.yaml`:
 - Uses `ruamel.yaml` to preserve comments and formatting
 - **Pydantic validation** via `api/config_schema.py` before saving
 - Tracks dirty state with unsaved changes warning
@@ -410,7 +418,7 @@ cd portal && npm run lint          # ESLint
 6. **Docs decoupled** - Documentation hosted on GitHub Pages only (not bundled with app)
 7. **Root package.json** - Has `npm run dev` using concurrently for API + Portal
 8. **Diagnostics page** - Has server restart and database reset functionality
-9. **friendly_name in config.yaml** - Displayed in Dashboard connection status
+9. **friendly_name in data/config.yaml** - Displayed in Dashboard connection status
 10. **api/utils/ contains logger** - `setup_logger` imported by API middleware
 11. **Documentation** - Always keep it up to date for both internal and user-facing documentation
 12. **TODO.md** - Keep it up to date with current features and TODOs. Leverage it for new features and TODOs.

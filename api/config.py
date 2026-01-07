@@ -10,9 +10,15 @@
 API Configuration Management
 
 Uses Pydantic Settings for configuration with environment variable support.
-Loads settings from .env file and config.yaml.
+Loads settings from .env file and data/config.yaml.
+
+Config file location (in order of precedence):
+1. GLASSTRAX_CONFIG_PATH environment variable
+2. data/config.yaml (default - persisted in Docker via volume mount)
+3. config.yaml in project root (legacy fallback for backwards compatibility)
 """
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -24,6 +30,41 @@ from pydantic_settings import BaseSettings
 def get_project_root() -> Path:
     """Get the project root directory"""
     return Path(__file__).parent.parent
+
+
+def get_config_path() -> Path:
+    """
+    Get the path to config.yaml.
+
+    Priority:
+    1. GLASSTRAX_CONFIG_PATH environment variable (if set)
+    2. data/config.yaml (default location, persisted via Docker volume)
+    3. config.yaml in project root (legacy fallback)
+    """
+    # Check environment variable first
+    env_path = os.environ.get("GLASSTRAX_CONFIG_PATH")
+    if env_path:
+        return Path(env_path)
+
+    project_root = get_project_root()
+
+    # Default location: data/config.yaml
+    data_config = project_root / "data" / "config.yaml"
+
+    # Legacy location: config.yaml in project root
+    legacy_config = project_root / "config.yaml"
+
+    # If data/config.yaml exists, use it
+    if data_config.exists():
+        return data_config
+
+    # If legacy config exists but data/config.yaml doesn't, use legacy
+    # (backwards compatibility for existing installations)
+    if legacy_config.exists():
+        return legacy_config
+
+    # Default to data/config.yaml (will be created if missing)
+    return data_config
 
 
 def get_version() -> str:
@@ -152,13 +193,15 @@ agent:
 
 def load_yaml_config(config_path: str | None = None) -> dict:
     """Load configuration from YAML file, creating default if missing"""
-    config_file = get_project_root() / "config.yaml" if config_path is None else Path(config_path)
+    config_file = get_config_path() if config_path is None else Path(config_path)
 
     if not config_file.exists():
+        # Ensure parent directory exists (for data/config.yaml)
+        config_file.parent.mkdir(parents=True, exist_ok=True)
         # Create default config file
         with open(config_file, "w", encoding="utf-8") as f:
             f.write(DEFAULT_CONFIG)
-        print(f"Created default configuration file: {config_path}")
+        print(f"Created default configuration file: {config_file}")
 
     with open(config_file, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}

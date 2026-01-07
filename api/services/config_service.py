@@ -12,6 +12,11 @@ Configuration Service
 Provides read/write access to config.yaml while preserving comments and formatting.
 Uses ruamel.yaml for comment-preserving YAML operations.
 Includes Pydantic validation for config structure.
+
+Config file location is determined by api.config.get_config_path():
+1. GLASSTRAX_CONFIG_PATH environment variable (if set)
+2. data/config.yaml (default - persisted in Docker via volume mount)
+3. config.yaml in project root (legacy fallback)
 """
 
 from pathlib import Path
@@ -19,7 +24,7 @@ from typing import Any, List, Optional, Set
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
-from api.config import get_project_root
+from api.config import get_config_path, DEFAULT_CONFIG
 from api.config_schema import (
     validate_config,
     validate_editable_config,
@@ -37,13 +42,26 @@ class ConfigService:
 
     def __init__(self, config_path: str = None):
         if config_path is None:
-            self.config_path = get_project_root() / "config.yaml"
+            self.config_path = get_config_path()
         else:
             self.config_path = Path(config_path)
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
         self._config: Optional[CommentedMap] = None
+
+        # Create default config if missing
+        self._ensure_config_exists()
+
+    def _ensure_config_exists(self) -> None:
+        """Create default config file if it doesn't exist"""
+        if not self.config_path.exists():
+            # Ensure parent directory exists (for data/config.yaml)
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+            # Create default config file
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                f.write(DEFAULT_CONFIG)
+            print(f"Created default configuration file: {self.config_path}")
 
     def _ensure_loaded(self) -> CommentedMap:
         """Ensure config is loaded, load if not"""
@@ -59,11 +77,10 @@ class ConfigService:
             validate: If True, validate config against schema on load
 
         Raises:
-            FileNotFoundError: If config file doesn't exist
             pydantic.ValidationError: If config is invalid and validate=True
         """
-        if not self.config_path.exists():
-            raise FileNotFoundError(f"Config file not found: {self.config_path}")
+        # Ensure config exists (creates default if missing)
+        self._ensure_config_exists()
 
         with open(self.config_path, 'r', encoding='utf-8') as f:
             self._config = self.yaml.load(f)
