@@ -100,6 +100,10 @@ agent:
   timeout: 30                 # Request timeout (seconds)
 ```
 
+::: info Configuration via Settings UI
+Agent settings can be configured via the portal's **Settings → Data Source → Agent** page instead of editing config files or setting environment variables. This is useful if you prefer to start with a minimal Docker setup and configure later. Changes made in the Settings UI are persisted to `config.yaml`.
+:::
+
 ### Agent Mode
 
 When running Docker + Windows Agent (agent mode):

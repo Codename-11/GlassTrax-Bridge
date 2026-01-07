@@ -42,10 +42,16 @@ services:
 # CONFIGURATION
 # =============================================================================
 #
-# Option 1: Use .env file (recommended)
+# Agent environment variables are OPTIONAL. You can:
+#
+# Option 1: Configure via Settings UI (easiest)
+#   Start container with minimal config, then configure agent in portal:
+#   Settings → Data Source → Agent
+#
+# Option 2: Use .env file
 #   Copy .env.example to .env and edit values
 #
-# Option 2: Set environment variables inline
+# Option 3: Set environment variables inline
 #   environment:
 #     - GLASSTRAX_AGENT_ENABLED=true
 #     - GLASSTRAX_AGENT_URL=http://192.168.1.100:8001

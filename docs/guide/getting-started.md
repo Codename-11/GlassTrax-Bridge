@@ -43,7 +43,7 @@ services:
     volumes:
       - ./data:/app/data  # Persists database AND config
     environment:
-      # GlassTrax API Agent Configuration
+      # GlassTrax API Agent Configuration (optional - can configure via Settings UI)
       - GLASSTRAX_AGENT_ENABLED=true
       - GLASSTRAX_AGENT_URL=http://192.168.1.100:8001  # Your Windows IP
       - GLASSTRAX_AGENT_KEY=gta_your_key_here          # Key from Step 1
@@ -58,6 +58,28 @@ Run `ipconfig` on Windows to find the IPv4 address (e.g., 192.168.1.100)
 **Update these values:**
 - `GLASSTRAX_AGENT_URL` - Replace `192.168.1.100` with your Windows machine's IP
 - `GLASSTRAX_AGENT_KEY` - Paste the API key from Step 1
+
+::: info Agent Configuration is Optional
+You don't need to set agent environment variables at startup. You can start the container with a minimal configuration and configure the agent connection later via **Settings → Data Source → Agent** in the portal. Settings are persisted in `data/config.yaml`.
+:::
+
+#### Option: Minimal Docker Compose
+
+If you prefer to configure everything via the Settings UI:
+
+```yaml
+services:
+  glasstrax-bridge:
+    image: ghcr.io/codename-11/glasstrax-bridge:latest
+    container_name: glasstrax-bridge
+    ports:
+      - "3000:80"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+After starting, login to the portal and go to **Settings** to configure your agent connection.
 
 #### Option: Use .env File
 
@@ -272,6 +294,8 @@ curl -H "X-API-Key: gtb_your_admin_key" http://localhost:3000/api/v1/customers?l
 ---
 
 ## Environment Variables Reference
+
+All environment variables are optional. Agent settings can be configured via the **Settings** page in the portal instead of using environment variables.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
