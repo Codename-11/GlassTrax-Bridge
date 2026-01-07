@@ -1,6 +1,6 @@
 {
   "name": "glasstrax-bridge-docs",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "type": "module",
   "description": "GlassTrax Bridge API Documentation",
   "private": true,
