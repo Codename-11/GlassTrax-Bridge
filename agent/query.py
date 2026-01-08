@@ -73,7 +73,11 @@ class QueryService:
         """Validate table name against allowlist"""
         allowed = self.config.allowed_tables
         if table.lower() not in [t.lower() for t in allowed]:
-            raise ValueError(f"Table '{table}' is not in allowed tables: {allowed}")
+            raise ValueError(
+                f"Table '{table}' is not in agent's allowed_tables. "
+                f"Add '{table}' to agent_config.yaml and restart the agent. "
+                f"Current allowed tables: {allowed}"
+            )
 
     def _validate_identifier(self, name: str) -> str:
         """
@@ -285,7 +289,23 @@ class QueryService:
             except UnicodeDecodeError:
                 return value.hex()
         if isinstance(value, str):
-            return value.strip()
+            stripped = value.strip()
+            # Try to convert numeric strings to proper types
+            # This handles Pervasive returning numbers as strings
+            if stripped:
+                # Check for integer (including negative)
+                if stripped.lstrip('-').isdigit():
+                    try:
+                        return int(stripped)
+                    except ValueError:
+                        pass
+                # Check for float/decimal (including negative, with decimal point)
+                if stripped.replace('.', '', 1).replace('-', '', 1).isdigit():
+                    try:
+                        return float(stripped)
+                    except ValueError:
+                        pass
+            return stripped
         # Let other types pass through (int, float, bool, date, datetime)
         return value
 

@@ -174,6 +174,15 @@ export const tenantsApi = {
       ...r,
       data: r.data.data,
     })),
+  update: (
+    id: number,
+    data: { name?: string; description?: string; contact_email?: string; is_active?: boolean }
+  ) =>
+    api.patch<APIResponse<Tenant>>(`/api/v1/admin/tenants/${id}`, data).then((r) => ({
+      ...r,
+      data: r.data.data,
+    })),
+  delete: (id: number) => api.delete(`/api/v1/admin/tenants/${id}`),
   get: (id: number) =>
     api.get<APIResponse<Tenant>>(`/api/v1/admin/tenants/${id}`).then((r) => ({
       ...r,

@@ -93,19 +93,36 @@ agent:
     - delivery_routes
     - sales_orders_headers
     - sales_order_detail
+    - so_processing          # Required for fab/edgework info
+    - processing_charges     # Required for fab/edgework info
 ```
 
 ### Allowed Tables
 
-For security, the agent only allows queries to tables listed in `allowed_tables`. Add tables as needed:
+For security, the agent only allows queries to tables listed in `allowed_tables`. This is a **security boundary** that controls what data can ever be queried via the agent.
+
+::: tip Required Tables for Full Functionality
+The GlassTrax Bridge API needs these tables for complete order details (including fab and edgework info):
+- `customer` - Customer master data
+- `customer_contacts` - Customer contact information
+- `delivery_routes` - Route definitions
+- `sales_orders_headers` - Order headers
+- `sales_order_detail` - Order line items
+- `so_processing` - Processing operations per line
+- `processing_charges` - Processing definitions (fab, edgework)
+
+If you see errors like "Table 'X' is not in allowed_tables", add the missing table to your config.
+:::
+
+Add additional tables as needed for custom integrations:
 
 ```yaml
 agent:
   allowed_tables:
     - customer
-    - orders
-    - orderdet
-    - inventry
+    - sales_orders_headers
+    - sales_order_detail
+    # Add more tables as needed
 ```
 
 ## API Endpoints
@@ -204,7 +221,21 @@ The agent only allows queries to tables listed in `allowed_tables`. This prevent
 
 ### "Table not allowed" errors
 
-Add the table name to `agent.allowed_tables` in `agent_config.yaml`
+The error message will tell you exactly which table is missing. Add it to `agent.allowed_tables` in `agent_config.yaml`:
+
+```yaml
+agent:
+  allowed_tables:
+    - customer
+    - customer_contacts
+    - delivery_routes
+    - sales_orders_headers
+    - sales_order_detail
+    - so_processing          # Add this for fab info
+    - processing_charges     # Add this for edgework info
+```
+
+Then restart the agent for changes to take effect.
 
 ### Database connection errors
 

@@ -20,17 +20,14 @@ Logs to both file and SQLite database for dashboard viewing.
 
 import time
 import uuid
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-import logging
-
 from api.database import SessionLocal
 from api.models.access_log import AccessLog
-
 from api.utils import setup_logger
 
 # Set up API logger
@@ -76,7 +73,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             status_code = 500
             api_logger.error(
-                f"[{request_id}] ERROR {method} {path} - {str(e)}"
+                f"[{request_id}] ERROR {method} {path} - {e!s}"
             )
             raise
 
@@ -173,7 +170,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 db.close()
         except Exception as e:
             # Log the error but don't fail the request
-            api_logger.error(f"Failed to save access log: {str(e)}")
+            api_logger.error(f"Failed to save access log: {e!s}")
 
 
 class AccessLogEntry:
@@ -195,7 +192,7 @@ class AccessLogEntry:
         client_ip: str,
         status_code: int,
         response_time_ms: float,
-        user_agent: str = None,
+        user_agent: str | None = None,
     ):
         self.request_id = request_id
         self.timestamp = timestamp

@@ -14,11 +14,11 @@ Keys are validated against the SQLite database with bcrypt hashing.
 """
 
 from datetime import datetime
-from typing import Optional
-from fastapi import HTTPException, Security, status, Depends, Request
-from fastapi.security import APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+
 import jwt
+from fastapi import Depends, HTTPException, Request, Security, status
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
 
 from api.config import get_api_settings
 from api.database import get_db
@@ -37,7 +37,7 @@ api_key_header = APIKeyHeader(
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def _verify_jwt_token(token: str) -> Optional[dict]:
+def _verify_jwt_token(token: str) -> dict | None:
     """Verify a JWT token and return the payload if valid"""
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
@@ -56,13 +56,13 @@ class APIKeyInfo:
 
     def __init__(
         self,
-        key_id: Optional[int],
+        key_id: int | str | None,
         key_prefix: str,
         tenant_id: str,
         name: str,
         permissions: list,
         is_active: bool = True,
-        expires_at: Optional[datetime] = None,
+        expires_at: datetime | None = None,
         rate_limit: int = 60,
     ):
         self.key_id = key_id
@@ -74,7 +74,7 @@ class APIKeyInfo:
         self.expires_at = expires_at
         self.rate_limit = rate_limit
 
-    def days_until_expiry(self) -> Optional[int]:
+    def days_until_expiry(self) -> int | None:
         """Returns days until expiry, or None if no expiration"""
         if not self.expires_at:
             return None
@@ -100,7 +100,7 @@ class ExpiredKeyError(Exception):
     pass
 
 
-def _check_db_key(api_key: str, db: Session) -> Optional[APIKeyInfo]:
+def _check_db_key(api_key: str, db: Session) -> APIKeyInfo | None:
     """Check if this is a valid database key"""
     # Keys start with "gtb_" prefix
     if not api_key.startswith("gtb_"):
@@ -110,7 +110,7 @@ def _check_db_key(api_key: str, db: Session) -> Optional[APIKeyInfo]:
     key_prefix = api_key[:12]
     potential_keys = db.query(APIKey).filter(
         APIKey.key_prefix == key_prefix,
-        APIKey.is_active == True,
+        APIKey.is_active,
     ).all()
 
     # Verify the full key against each potential match
@@ -140,8 +140,8 @@ def _check_db_key(api_key: str, db: Session) -> Optional[APIKeyInfo]:
 
 async def get_api_key(
     request: Request,
-    api_key: Optional[str] = Security(api_key_header),
-    bearer: Optional[HTTPAuthorizationCredentials] = Security(bearer_scheme),
+    api_key: str | None = Security(api_key_header),
+    bearer: HTTPAuthorizationCredentials | None = Security(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> APIKeyInfo:
     """
@@ -197,7 +197,7 @@ async def get_api_key(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
             headers={"WWW-Authenticate": "ApiKey"},
-        )
+        ) from e
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

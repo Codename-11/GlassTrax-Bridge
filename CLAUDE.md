@@ -397,6 +397,28 @@ cd portal && npm run format:check  # Check formatting
 cd portal && npm run lint          # ESLint
 ```
 
+## Pre-Commit Checklist
+
+**IMPORTANT:** Before committing, ALWAYS run these checks to avoid CI failures:
+
+```powershell
+# 1. Run all tests
+npm run test              # Runs API, agent, and portal tests
+
+# 2. Run linting (from project root)
+ruff check api/ --fix     # Python linting with auto-fix
+ruff check agent/ --fix   # Agent linting
+
+# 3. Run portal formatting
+cd portal && npm run format && cd ..
+
+# 4. Verify everything passes
+ruff check api/ agent/              # Should show "All checks passed!"
+cd portal && npm run format:check   # Should exit cleanly
+```
+
+If tests fail due to changed error messages or behavior, update the test assertions accordingly.
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -454,3 +476,4 @@ cd portal && npm run lint          # ESLint
 42. **Portal test utilities** - Custom render with providers in `portal/src/__tests__/test-utils.tsx`
 43. **MSW handlers** - Mock API responses in `portal/src/__tests__/mocks/handlers.ts`
 44. **DSN inspection tool** - Use `tools\inspect.bat` to explore GlassTrax database schema (tables, columns, sample data)
+45. **ALWAYS run pre-commit checks** - Before ANY commit, run: `npm run test`, `ruff check api/ agent/ --fix`, `cd portal && npm run format`. CI will fail otherwise!

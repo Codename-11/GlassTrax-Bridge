@@ -19,7 +19,6 @@ from collections.abc import Generator
 from api.services.config_service import get_config_service
 from api.services.glasstrax import GlassTraxService
 
-
 # Service instances (created on first request, reused)
 _glasstrax_service: GlassTraxService | None = None
 _agent_client = None  # AgentClient when in agent mode

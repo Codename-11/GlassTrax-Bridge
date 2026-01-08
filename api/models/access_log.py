@@ -17,7 +17,9 @@ Records all API requests for audit and analytics:
 """
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Index
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String
+
 from api.database import Base
 
 
@@ -76,12 +78,12 @@ class AccessLog(Base):
         path: str,
         status_code: int,
         response_time_ms: float,
-        api_key_id: int = None,
-        tenant_id: int = None,
-        key_prefix: str = None,
-        query_string: str = None,
-        client_ip: str = None,
-        user_agent: str = None,
+        api_key_id: int | None = None,
+        tenant_id: int | None = None,
+        key_prefix: str | None = None,
+        query_string: str | None = None,
+        client_ip: str | None = None,
+        user_agent: str | None = None,
     ) -> "AccessLog":
         """
         Create an access log entry from request details.

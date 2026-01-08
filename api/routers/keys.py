@@ -16,26 +16,25 @@ Provides endpoints for managing tenants and API keys:
 Note: These endpoints require admin API key with 'admin:*' permission.
 """
 
-from typing import List, Optional
-from pydantic import BaseModel
+import math
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from api.database import get_db
-from api.models import Tenant, APIKey, AccessLog
+from api.middleware import APIKeyInfo, get_api_key, require_admin
+from api.models import AccessLog, APIKey, Tenant
 from api.schemas.key_management import (
-    TenantCreate,
-    TenantUpdate,
-    TenantResponse,
     APIKeyCreate,
-    APIKeyResponse,
     APIKeyCreatedResponse,
+    APIKeyResponse,
     APIKeyUpdate,
+    TenantCreate,
+    TenantResponse,
+    TenantUpdate,
 )
 from api.schemas.responses import APIResponse, PaginatedResponse, PaginationMeta
-from api.middleware import get_api_key, require_admin, APIKeyInfo
-
-import math
 
 router = APIRouter()
 
@@ -61,7 +60,7 @@ async def list_tenants(
     """List all tenants"""
     query = db.query(Tenant)
     if active_only:
-        query = query.filter(Tenant.is_active == True)
+        query = query.filter(Tenant.is_active)
 
     total = query.count()
     tenants = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -207,6 +206,13 @@ async def delete_tenant(
             detail=f"Tenant {tenant_id} not found",
         )
 
+    # Protect System tenant from deletion
+    if tenant.name == "System":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete the System tenant",
+        )
+
     db.delete(tenant)
     db.commit()
 
@@ -227,7 +233,7 @@ async def list_api_keys(
     db: Session = Depends(get_db),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    tenant_id: Optional[int] = Query(None, description="Filter by tenant"),
+    tenant_id: int | None = Query(None, description="Filter by tenant"),
     active_only: bool = Query(False, description="Only show active keys"),
 ) -> PaginatedResponse[APIKeyResponse]:
     """List all API keys"""
@@ -236,7 +242,7 @@ async def list_api_keys(
     if tenant_id:
         query = query.filter(APIKey.tenant_id == tenant_id)
     if active_only:
-        query = query.filter(APIKey.is_active == True)
+        query = query.filter(APIKey.is_active)
 
     total = query.count()
     keys = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -482,14 +488,14 @@ async def activate_api_key(
 # Access Log Endpoints
 # ========================================
 
-from pydantic import BaseModel
-from datetime import datetime as dt, timedelta
-import sys
 import os
-import jwt
 import subprocess
+import sys
 import threading
-import signal
+from datetime import datetime as dt
+from datetime import timedelta
+
+import jwt
 
 # pyodbc is optional (not available in Docker)
 try:
@@ -501,19 +507,20 @@ except ImportError:
 
 from api.config import get_admin_settings, get_api_settings
 
+
 class AccessLogResponse(BaseModel):
     """Access log entry response"""
     id: int
     request_id: str
-    api_key_id: Optional[int] = None
-    tenant_id: Optional[int] = None
-    key_prefix: Optional[str] = None
+    api_key_id: int | None = None
+    tenant_id: int | None = None
+    key_prefix: str | None = None
     method: str
     path: str
-    query_string: Optional[str] = None
-    client_ip: Optional[str] = None
+    query_string: str | None = None
+    client_ip: str | None = None
     status_code: int
-    response_time_ms: Optional[float] = None
+    response_time_ms: float | None = None
     created_at: dt
 
     class Config:
@@ -532,9 +539,9 @@ async def list_access_logs(
     db: Session = Depends(get_db),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
-    tenant_id: Optional[int] = Query(None, description="Filter by tenant"),
-    api_key_id: Optional[int] = Query(None, description="Filter by API key"),
-    limit: Optional[int] = Query(None, description="Limit total results"),
+    tenant_id: int | None = Query(None, description="Filter by tenant"),
+    api_key_id: int | None = Query(None, description="Filter by API key"),
+    limit: int | None = Query(None, description="Limit total results"),
 ) -> PaginatedResponse[AccessLogResponse]:
     """List access logs"""
     query = db.query(AccessLog).order_by(AccessLog.created_at.desc())
@@ -579,13 +586,13 @@ class DiagnosticCheck(BaseModel):
     name: str
     status: str  # 'pass', 'fail', 'warning'
     message: str
-    details: Optional[dict] = None
+    details: dict | None = None
 
 
 class DiagnosticsResponse(BaseModel):
     """Full diagnostics response"""
     overall_status: str  # 'healthy', 'degraded', 'unhealthy'
-    checks: List[DiagnosticCheck]
+    checks: list[DiagnosticCheck]
     system_info: dict
 
 
@@ -601,7 +608,7 @@ async def get_diagnostics(
     db: Session = Depends(get_db),
 ) -> APIResponse[DiagnosticsResponse]:
     """Run system diagnostics"""
-    checks: List[DiagnosticCheck] = []
+    checks: list[DiagnosticCheck] = []
 
     # 1. Check Python version and architecture
     python_info = {
@@ -640,7 +647,7 @@ async def get_diagnostics(
             checks.append(DiagnosticCheck(
                 name="Pervasive ODBC Driver",
                 status="fail",
-                message=f"Error checking drivers: {str(e)}",
+                message=f"Error checking drivers: {e!s}",
             ))
     else:
         checks.append(DiagnosticCheck(
@@ -673,7 +680,7 @@ async def get_diagnostics(
         checks.append(DiagnosticCheck(
             name="GlassTrax Database",
             status="fail",
-            message=f"Connection error: {str(e)}",
+            message=f"Connection error: {e!s}",
         ))
 
     # 4. Check app database (SQLite)
@@ -692,7 +699,7 @@ async def get_diagnostics(
         checks.append(DiagnosticCheck(
             name="App Database (SQLite)",
             status="fail",
-            message=f"Database error: {str(e)}",
+            message=f"Database error: {e!s}",
         ))
 
     # 5. Check config file
@@ -713,17 +720,18 @@ async def get_diagnostics(
         checks.append(DiagnosticCheck(
             name="Configuration",
             status="warning",
-            message=f"Config check: {str(e)}",
+            message=f"Config check: {e!s}",
         ))
 
     # 6. Test API endpoint (customers)
     try:
-        from api.dependencies import get_glasstrax_service
         import time as time_module
+
+        from api.dependencies import get_glasstrax_service
         service = next(get_glasstrax_service())
 
         start = time_module.time()
-        customers, total = await service.get_customers(page=1, page_size=1)
+        customers, _total = await service.get_customers(page=1, page_size=1)
         elapsed = (time_module.time() - start) * 1000
 
         if customers and len(customers) > 0:
@@ -744,7 +752,7 @@ async def get_diagnostics(
         checks.append(DiagnosticCheck(
             name="API Endpoint Test (Customers)",
             status="fail",
-            message=f"Failed to query customers: {str(e)}",
+            message=f"Failed to query customers: {e!s}",
         ))
 
     # Determine overall status
@@ -809,8 +817,8 @@ class LoginResponse(BaseModel):
 class TokenValidateResponse(BaseModel):
     """Token validation response"""
     valid: bool
-    username: Optional[str] = None
-    expires_at: Optional[str] = None
+    username: str | None = None
+    expires_at: str | None = None
 
 
 @router.post(
@@ -898,13 +906,12 @@ async def admin_login(
     description="Check if a JWT token is valid",
 )
 async def validate_token(
-    authorization: str = None,
+    authorization: str | None = None,
 ) -> APIResponse[TokenValidateResponse]:
     """Validate a JWT token"""
-    settings = get_api_settings()
+    get_api_settings()
 
     # Get token from Authorization header
-    from fastapi import Header
     # This is a simple endpoint - token comes in request body or we check header
 
     return APIResponse(
@@ -925,7 +932,7 @@ class DatabaseResetRequest(BaseModel):
 
 class DatabaseResetResponse(BaseModel):
     """Response after database reset"""
-    tables_cleared: List[str]
+    tables_cleared: list[str]
     message: str
 
 
@@ -992,7 +999,7 @@ async def reset_database(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to reset database: {str(e)}",
+            detail=f"Failed to reset database: {e!s}",
         )
 
 
@@ -1099,8 +1106,8 @@ class DSNInfo(BaseModel):
 
 class DSNsResponse(BaseModel):
     """Available ODBC Data Sources response"""
-    dsns: List[DSNInfo]
-    pervasive_dsns: List[str]
+    dsns: list[DSNInfo]
+    pervasive_dsns: list[str]
     architecture: str
 
 
@@ -1177,7 +1184,7 @@ async def list_dsns(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list DSNs: {str(e)}",
+            detail=f"Failed to list DSNs: {e!s}",
         )
 
 
@@ -1192,8 +1199,8 @@ class TestDSNResponse(BaseModel):
     success: bool
     dsn: str
     message: str
-    tables_found: Optional[int] = None
-    sample_tables: Optional[List[str]] = None
+    tables_found: int | None = None
+    sample_tables: list[str] | None = None
 
 
 @router.post(
@@ -1252,7 +1259,7 @@ async def test_dsn(
         ]]
 
         if glasstrax_tables:
-            message = f"Connected successfully! Found GlassTrax tables."
+            message = "Connected successfully! Found GlassTrax tables."
         elif tables:
             message = f"Connected successfully! Found {len(tables)} tables (may not be GlassTrax)."
         else:
@@ -1292,7 +1299,7 @@ async def test_dsn(
             data=TestDSNResponse(
                 success=False,
                 dsn=data.dsn,
-                message=f"Connection failed: {str(e)}",
+                message=f"Connection failed: {e!s}",
             ),
         )
 
@@ -1313,8 +1320,8 @@ class TestAgentResponse(BaseModel):
     connected: bool
     url: str
     message: str
-    agent_version: Optional[str] = None
-    database_connected: Optional[bool] = None
+    agent_version: str | None = None
+    database_connected: bool | None = None
 
 
 @router.post(
@@ -1336,7 +1343,7 @@ async def test_agent(
     - API key is valid
     - Agent can connect to GlassTrax database
     """
-    from api.services.agent_client import AgentClient, AgentConnectionError, AgentAuthError
+    from api.services.agent_client import AgentAuthError, AgentClient, AgentConnectionError
 
     try:
         # Create temporary client for testing
@@ -1377,7 +1384,7 @@ async def test_agent(
             data=TestAgentResponse(
                 connected=False,
                 url=data.url,
-                message=f"Authentication failed: {str(e)}",
+                message=f"Authentication failed: {e!s}",
             ),
         )
     except AgentConnectionError as e:
@@ -1386,7 +1393,7 @@ async def test_agent(
             data=TestAgentResponse(
                 connected=False,
                 url=data.url,
-                message=f"Connection failed: {str(e)}",
+                message=f"Connection failed: {e!s}",
             ),
         )
     except Exception as e:
@@ -1395,7 +1402,7 @@ async def test_agent(
             data=TestAgentResponse(
                 connected=False,
                 url=data.url,
-                message=f"Unexpected error: {str(e)}",
+                message=f"Unexpected error: {e!s}",
             ),
         )
 
@@ -1432,8 +1439,8 @@ async def change_password(
     Requires the current password for verification.
     The new password will be hashed and saved to config.yaml.
     """
-    from api.services.config_service import get_config_service
     from api.config import get_admin_settings, hash_password
+    from api.services.config_service import get_config_service
 
     # Verify current password
     admin = get_admin_settings()
@@ -1471,7 +1478,7 @@ async def change_password(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to change password: {str(e)}",
+            detail=f"Failed to change password: {e!s}",
         )
 
 
@@ -1490,18 +1497,18 @@ class ConfigResponse(BaseModel):
 
 class ConfigUpdateRequest(BaseModel):
     """Request to update configuration"""
-    database: Optional[dict] = None
-    application: Optional[dict] = None
-    features: Optional[dict] = None
-    admin: Optional[dict] = None
-    agent: Optional[dict] = None
+    database: dict | None = None
+    application: dict | None = None
+    features: dict | None = None
+    admin: dict | None = None
+    agent: dict | None = None
 
 
 class ConfigUpdateResponse(BaseModel):
     """Response after config update"""
-    changed_fields: List[str]
+    changed_fields: list[str]
     restart_required: bool
-    restart_required_fields: List[str]
+    restart_required_fields: list[str]
     message: str
 
 
@@ -1539,7 +1546,7 @@ async def get_config(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to load configuration: {str(e)}",
+            detail=f"Failed to load configuration: {e!s}",
         )
 
 
@@ -1566,8 +1573,8 @@ async def update_config(
 
     Some settings take effect immediately (hot-reload), others require restart.
     """
-    from api.services.config_service import get_config_service
     from api.config import get_api_settings, get_db_settings
+    from api.services.config_service import get_config_service
 
     try:
         config_service = get_config_service()
@@ -1659,5 +1666,5 @@ async def update_config(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update configuration: {str(e)}",
+            detail=f"Failed to update configuration: {e!s}",
         )

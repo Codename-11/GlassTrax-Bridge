@@ -19,11 +19,12 @@ Stores API keys with:
 
 import secrets
 import string
-import bcrypt as _bcrypt
 from datetime import datetime
-from typing import List, Optional
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, JSON
+
+import bcrypt as _bcrypt
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from api.database import Base
 
 
@@ -102,10 +103,10 @@ class APIKey(Base):
         cls,
         tenant_id: int,
         name: str,
-        permissions: List[str],
-        description: Optional[str] = None,
+        permissions: list[str],
+        description: str | None = None,
         rate_limit: int = 60,
-        expires_at: Optional[datetime] = None,
+        expires_at: datetime | None = None,
     ) -> tuple["APIKey", str]:
         """
         Create a new API key with a generated secret.
@@ -162,9 +163,7 @@ class APIKey(Base):
         """
         if not self.is_active:
             return False
-        if self.expires_at and datetime.utcnow() > self.expires_at:
-            return False
-        return True
+        return not (self.expires_at and datetime.utcnow() > self.expires_at)
 
     def has_permission(self, resource: str, action: str = "read") -> bool:
         """
@@ -188,10 +187,7 @@ class APIKey(Base):
         # Check for wildcard permissions
         if f"{resource}:*" in self.permissions:
             return True
-        if "*:*" in self.permissions:
-            return True
-
-        return False
+        return "*:*" in self.permissions
 
     def record_use(self):
         """Record that this key was used (updates last_used_at and use_count)"""

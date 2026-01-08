@@ -88,6 +88,8 @@ class AgentConfig:
                     "delivery_routes",
                     "sales_orders_headers",
                     "sales_order_detail",
+                    "so_processing",
+                    "processing_charges",
                 ],
             },
         }

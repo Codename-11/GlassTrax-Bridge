@@ -33,14 +33,13 @@ from slowapi.errors import RateLimitExceeded
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.config import get_api_settings, get_db_settings, load_yaml_config
-from api.database import DATABASE_PATH, engine, get_db, init_db
+from api.database import engine, get_db, init_db
 from api.dependencies import close_glasstrax_service, get_glasstrax_service
 from api.middleware import RequestLoggingMiddleware
 from api.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from api.models import APIKey, Tenant
 from api.routers import customers_router, keys_router, orders_router
 from api.schemas.responses import ErrorResponse
-
 
 # Load settings
 settings = get_api_settings()
@@ -59,7 +58,7 @@ def _setup_initial_admin_key():
     db = next(get_db())
     try:
         # Check if any admin API keys exist
-        admin_keys = db.query(APIKey).filter(APIKey.is_active == True).all()
+        admin_keys = db.query(APIKey).filter(APIKey.is_active).all()
         has_admin_key = any(
             key.permissions and ("admin:*" in key.permissions or "*:*" in key.permissions)
             for key in admin_keys
@@ -114,8 +113,8 @@ def _check_pending_migrations():
     """
     try:
         from alembic.config import Config
-        from alembic.script import ScriptDirectory
         from alembic.runtime.migration import MigrationContext
+        from alembic.script import ScriptDirectory
 
         # Load Alembic config
         alembic_cfg = Config("alembic.ini")

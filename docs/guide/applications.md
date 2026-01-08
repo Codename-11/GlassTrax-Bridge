@@ -37,32 +37,40 @@ curl -X POST http://localhost:8000/api/v1/admin/tenants \
 
 ## Managing Applications
 
-### List Applications
+You can edit, deactivate, or delete applications from the **Applications** page in the portal.
 
-```bash
-curl http://localhost:8000/api/v1/admin/tenants \
-  -H "Authorization: Bearer $TOKEN"
-```
+### Edit Application
 
-### Update Application
+Update name, description, contact email, or active status:
+
+- Via portal: Click **Edit** on an application
+- Via API:
 
 ```bash
 curl -X PATCH http://localhost:8000/api/v1/admin/tenants/1 \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"description": "Updated description"}'
+  -d '{"description": "Updated description", "is_active": false}'
 ```
+
+### Deactivate Application
+
+Deactivating an application disables all its API keys without deleting them. This is useful for temporarily suspending access.
 
 ### Delete Application
 
 ::: danger
-Deleting an application also deletes all its API keys!
+Deleting an application also deletes all its API keys! This cannot be undone.
 :::
 
 ```bash
 curl -X DELETE http://localhost:8000/api/v1/admin/tenants/1 \
   -H "Authorization: Bearer $TOKEN"
 ```
+
+::: info System Application
+The "System" application is created automatically and used for admin operations. It cannot be deleted or modified via the portal.
+:::
 
 ## Best Practices
 

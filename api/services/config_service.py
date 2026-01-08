@@ -19,16 +19,17 @@ Config file location is determined by api.config.get_config_path():
 3. config.yaml in project root (legacy fallback)
 """
 
+import builtins
 from pathlib import Path
-from typing import Any, List, Optional, Set
+from typing import Any
+
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
-from api.config import get_config_path, DEFAULT_CONFIG
+from api.config import DEFAULT_CONFIG, get_config_path
 from api.config_schema import (
-    validate_config,
-    validate_editable_config,
     get_validation_errors,
+    validate_editable_config,
 )
 
 
@@ -40,7 +41,7 @@ class ConfigService:
     formatting, and structure intact.
     """
 
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str | None = None):
         if config_path is None:
             self.config_path = get_config_path()
         else:
@@ -48,7 +49,7 @@ class ConfigService:
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
-        self._config: Optional[CommentedMap] = None
+        self._config: CommentedMap | None = None
 
         # Create default config if missing
         self._ensure_config_exists()
@@ -82,7 +83,7 @@ class ConfigService:
         # Ensure config exists (creates default if missing)
         self._ensure_config_exists()
 
-        with open(self.config_path, 'r', encoding='utf-8') as f:
+        with open(self.config_path, encoding='utf-8') as f:
             self._config = self.yaml.load(f)
 
         # Validate against schema
@@ -92,7 +93,7 @@ class ConfigService:
                 # Log warnings but don't fail - allows partial configs
                 import warnings
                 for error in errors:
-                    warnings.warn(f"Config validation warning: {error}", UserWarning)
+                    warnings.warn(f"Config validation warning: {error}", UserWarning, stacklevel=2)
 
         return self._config
 
@@ -191,7 +192,7 @@ class ConfigService:
             },
         }
 
-    def validate_update(self, updates: dict) -> List[str]:
+    def validate_update(self, updates: dict) -> list[str]:
         """
         Validate an update dict before applying.
 
@@ -229,7 +230,7 @@ class ConfigService:
                 ]
             return [str(e)]
 
-    def update_from_dict(self, updates: dict, prefix: str = "") -> List[str]:
+    def update_from_dict(self, updates: dict, prefix: str = "") -> list[str]:
         """
         Update config from a nested dict, returning list of changed paths.
 
@@ -252,13 +253,13 @@ class ConfigService:
 
         return changed
 
-    def get_restart_required_fields(self) -> Set[str]:
+    def get_restart_required_fields(self) -> builtins.set[str]:
         """Fields that require a server restart to take effect"""
         return {
             "database.dsn",  # Changing DSN requires reconnection
         }
 
-    def get_hot_reload_fields(self) -> Set[str]:
+    def get_hot_reload_fields(self) -> builtins.set[str]:
         """Fields that can be hot-reloaded without restart"""
         return {
             "database.friendly_name",
@@ -282,7 +283,7 @@ class ConfigService:
 
 
 # Singleton instance
-_config_service: Optional[ConfigService] = None
+_config_service: ConfigService | None = None
 
 
 def get_config_service() -> ConfigService:

@@ -25,6 +25,7 @@ Date format: YYYYMMDD stored as CHAR(8)
 Status: open_closed_flag - 'O' = Open, 'C' = Closed
 """
 
+import contextlib
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
@@ -1044,12 +1045,14 @@ class GlassTraxService:
             return val.strip() if isinstance(val, str) and val else val if val else None
 
         total_qty = 0
-        total_amount = 0
+        total_amount = 0.0
         for item in line_items:
             if item.get("order_qty"):
-                total_qty += item["order_qty"]
+                with contextlib.suppress(TypeError, ValueError):
+                    total_qty += float(item["order_qty"])
             if item.get("total_extended_price"):
-                total_amount += item["total_extended_price"]
+                with contextlib.suppress(TypeError, ValueError):
+                    total_amount += float(item["total_extended_price"])
 
         return {
             "so_no": header.get("so_no"),

@@ -13,7 +13,7 @@ Pydantic models for customer data validation and serialization.
 Based on GlassTrax 'customer' and 'customer_contacts' tables.
 """
 
-from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -21,13 +21,13 @@ class CustomerContact(BaseModel):
     """Customer contact information from customer_contacts table"""
 
     contact_no: int = Field(..., description="Contact number")
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    title: Optional[str] = None
-    email: Optional[str] = None
-    work_phone: Optional[str] = None
-    mobile_phone: Optional[str] = None
-    fax: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
+    title: str | None = None
+    email: str | None = None
+    work_phone: str | None = None
+    mobile_phone: str | None = None
+    fax: str | None = None
 
     class Config:
         from_attributes = True
@@ -36,15 +36,15 @@ class CustomerContact(BaseModel):
 class CustomerAddress(BaseModel):
     """Customer address information"""
 
-    name: Optional[str] = None
-    address1: Optional[str] = None
-    address2: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    country: Optional[str] = None
-    zip_code: Optional[str] = None
-    phone: Optional[str] = None
-    fax: Optional[str] = None
+    name: str | None = None
+    address1: str | None = None
+    address2: str | None = None
+    city: str | None = None
+    state: str | None = None
+    country: str | None = None
+    zip_code: str | None = None
+    phone: str | None = None
+    fax: str | None = None
 
 
 class CustomerBase(BaseModel):
@@ -52,44 +52,44 @@ class CustomerBase(BaseModel):
 
     customer_id: str = Field(..., max_length=6, description="Customer ID (6 char)")
     customer_name: str = Field(..., max_length=30, description="Customer name")
-    route_id: Optional[str] = Field(None, max_length=2, description="Delivery route ID")
+    route_id: str | None = Field(None, max_length=2, description="Delivery route ID")
 
 
 class CustomerResponse(CustomerBase):
     """Full customer response with all details"""
 
     # Basic info
-    lookup_description: Optional[str] = None
-    customer_type: Optional[str] = None
-    inside_salesperson: Optional[str] = None
-    territory: Optional[str] = None
-    branch_id: Optional[str] = None
+    lookup_description: str | None = None
+    customer_type: str | None = None
+    inside_salesperson: str | None = None
+    territory: str | None = None
+    branch_id: str | None = None
 
     # Main address
-    main_address: Optional[CustomerAddress] = None
+    main_address: CustomerAddress | None = None
 
     # Billing address
-    bill_address: Optional[CustomerAddress] = None
+    bill_address: CustomerAddress | None = None
 
     # Shipping address
-    ship_address: Optional[CustomerAddress] = None
+    ship_address: CustomerAddress | None = None
 
     # Financial
-    credit_limit: Optional[float] = None
-    credit_terms_code: Optional[str] = None
-    credit_hold: Optional[bool] = None
-    taxable: Optional[bool] = None
+    credit_limit: float | None = None
+    credit_terms_code: str | None = None
+    credit_hold: bool | None = None
+    taxable: bool | None = None
 
     # Stats
-    ytd_sales: Optional[float] = None
-    last_sale_date: Optional[str] = None
-    customer_since_date: Optional[str] = None
+    ytd_sales: float | None = None
+    last_sale_date: str | None = None
+    customer_since_date: str | None = None
 
     # Contacts
-    contacts: Optional[List[CustomerContact]] = None
+    contacts: list[CustomerContact] | None = None
 
     # Route info (joined)
-    route_name: Optional[str] = None
+    route_name: str | None = None
 
     class Config:
         from_attributes = True
@@ -100,12 +100,12 @@ class CustomerListResponse(BaseModel):
 
     customer_id: str
     customer_name: str
-    route_id: Optional[str] = None
-    route_name: Optional[str] = None
-    main_city: Optional[str] = None
-    main_state: Optional[str] = None
-    customer_type: Optional[str] = None
-    inside_salesperson: Optional[str] = None
+    route_id: str | None = None
+    route_name: str | None = None
+    main_city: str | None = None
+    main_state: str | None = None
+    customer_type: str | None = None
+    inside_salesperson: str | None = None
 
     class Config:
         from_attributes = True
@@ -114,11 +114,11 @@ class CustomerListResponse(BaseModel):
 class CustomerQueryParams(BaseModel):
     """Query parameters for customer list endpoint"""
 
-    search: Optional[str] = Field(None, description="Search by name or ID")
-    route_id: Optional[str] = Field(None, description="Filter by route ID")
-    customer_type: Optional[str] = Field(None, description="Filter by customer type")
-    city: Optional[str] = Field(None, description="Filter by city")
-    state: Optional[str] = Field(None, description="Filter by state")
-    salesperson: Optional[str] = Field(None, description="Filter by salesperson")
+    search: str | None = Field(None, description="Search by name or ID")
+    route_id: str | None = Field(None, description="Filter by route ID")
+    customer_type: str | None = Field(None, description="Filter by customer type")
+    city: str | None = Field(None, description="Filter by city")
+    state: str | None = Field(None, description="Filter by state")
+    salesperson: str | None = Field(None, description="Filter by salesperson")
     page: int = Field(1, ge=1, description="Page number")
     page_size: int = Field(20, ge=1, le=100, description="Items per page")

@@ -75,7 +75,7 @@ class TestQueryEndpoint:
         if response.status_code == 200:
             data = response.json()
             assert data.get("success") is False
-            assert "not in allowed tables" in data.get("error", "").lower()
+            assert "not in agent's allowed_tables" in data.get("error", "").lower()
 
     def test_query_with_filters(self, agent_client, auth_headers, mock_config):
         """Query with filters should be accepted."""

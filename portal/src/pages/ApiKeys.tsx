@@ -111,6 +111,38 @@ export function ApiKeysPage() {
     return tenants?.find((t) => t.id === tenantId)?.name ?? `Tenant ${tenantId}`
   }
 
+  // Filter out System tenant - users should create their own applications
+  const userTenants = tenants?.filter((t) => t.name !== 'System') ?? []
+
+  // Helper to copy text to clipboard with fallback
+  const copyToClipboard = async (text: string) => {
+    try {
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text)
+        toast.success('API key copied to clipboard')
+        return
+      }
+
+      // Fallback for non-HTTPS contexts
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-9999px'
+      document.body.appendChild(textArea)
+      textArea.select()
+      try {
+        document.execCommand('copy')
+        toast.success('API key copied to clipboard')
+      } catch {
+        toast.error('Failed to copy - please copy manually')
+      }
+      document.body.removeChild(textArea)
+    } catch {
+      toast.error('Failed to copy - please copy manually')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -120,17 +152,31 @@ export function ApiKeysPage() {
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button>Create API Key</Button>
+            <Button disabled={userTenants.length === 0}>Create API Key</Button>
           </DialogTrigger>
           <DialogContent>
             <CreateKeyForm
-              tenants={tenants ?? []}
+              tenants={userTenants}
               onSubmit={(data) => createMutation.mutate(data)}
               isLoading={createMutation.isPending}
             />
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* No Applications Alert */}
+      {userTenants.length === 0 && (
+        <Alert>
+          <AlertTitle>No Applications</AlertTitle>
+          <AlertDescription>
+            You need to create an application before you can generate API keys.{' '}
+            <a href="/applications" className="text-primary underline">
+              Create an application
+            </a>{' '}
+            to get started.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* New Key Alert */}
       {newKeyResult && (
@@ -149,10 +195,7 @@ export function ApiKeysPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(newKeyResult.plaintext)
-                  toast.success('API key copied to clipboard')
-                }}
+                onClick={() => copyToClipboard(newKeyResult.plaintext)}
               >
                 Copy
               </Button>

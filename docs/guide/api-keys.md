@@ -16,6 +16,10 @@ gtb_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 ## Creating API Keys
 
+::: tip Application Required
+Before creating an API key, you must first [register an application](/guide/applications). API keys are always associated with an application, which allows you to organize and manage access by project or service.
+:::
+
 ### Via Portal
 
 1. Navigate to **API Keys** page

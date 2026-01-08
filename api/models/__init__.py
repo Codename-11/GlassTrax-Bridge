@@ -18,13 +18,13 @@ Note: These models are for the app's SQLite database,
 not the GlassTrax Pervasive SQL database.
 """
 
-from api.models.tenant import Tenant
-from api.models.api_key import APIKey, generate_api_key
 from api.models.access_log import AccessLog
+from api.models.api_key import APIKey, generate_api_key
+from api.models.tenant import Tenant
 
 __all__ = [
-    "Tenant",
     "APIKey",
     "AccessLog",
+    "Tenant",
     "generate_api_key",
 ]

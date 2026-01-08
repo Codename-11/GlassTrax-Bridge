@@ -16,21 +16,21 @@ Contains middleware for request processing:
 """
 
 from .auth import (
+    APIKeyInfo,
     get_api_key,
-    require_permission,
+    require_admin,
     require_customers_read,
     require_orders_read,
-    require_admin,
-    APIKeyInfo,
+    require_permission,
 )
 from .logging import RequestLoggingMiddleware
 
 __all__ = [
-    "get_api_key",
-    "require_permission",
-    "require_customers_read",
-    "require_orders_read",
-    "require_admin",
     "APIKeyInfo",
     "RequestLoggingMiddleware",
+    "get_api_key",
+    "require_admin",
+    "require_customers_read",
+    "require_orders_read",
+    "require_permission",
 ]

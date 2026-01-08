@@ -15,20 +15,19 @@ Provides REST endpoints for customer data access:
 """
 
 import math
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
+from api.dependencies import get_glasstrax_service
+from api.middleware import APIKeyInfo, get_api_key, require_customers_read
+from api.middleware.rate_limit import limiter
 from api.schemas.customer import (
-    CustomerListResponse,
-    CustomerResponse,
     CustomerAddress,
     CustomerContact,
+    CustomerListResponse,
+    CustomerResponse,
 )
-from api.schemas.responses import PaginatedResponse, PaginationMeta, APIResponse
-from api.middleware import get_api_key, require_customers_read, APIKeyInfo
-from api.middleware.rate_limit import limiter
-from api.dependencies import get_glasstrax_service
+from api.schemas.responses import APIResponse, PaginatedResponse, PaginationMeta
 from api.services.glasstrax import GlassTraxService
 
 router = APIRouter()
@@ -52,12 +51,12 @@ async def list_customers(
     api_key: APIKeyInfo = Depends(get_api_key),
     _: None = Depends(require_customers_read),
     service: GlassTraxService = Depends(get_glasstrax_service),
-    search: Optional[str] = Query(None, description="Search by name or customer ID"),
-    route_id: Optional[str] = Query(None, description="Filter by route ID"),
-    customer_type: Optional[str] = Query(None, description="Filter by customer type"),
-    city: Optional[str] = Query(None, description="Filter by city"),
-    state: Optional[str] = Query(None, description="Filter by state"),
-    salesperson: Optional[str] = Query(None, description="Filter by salesperson"),
+    search: str | None = Query(None, description="Search by name or customer ID"),
+    route_id: str | None = Query(None, description="Filter by route ID"),
+    customer_type: str | None = Query(None, description="Filter by customer type"),
+    city: str | None = Query(None, description="Filter by city"),
+    state: str | None = Query(None, description="Filter by state"),
+    salesperson: str | None = Query(None, description="Filter by salesperson"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
 ) -> PaginatedResponse[CustomerListResponse]:
@@ -117,7 +116,7 @@ async def list_customers(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}",
+            detail=f"Database error: {e!s}",
         )
 
 
@@ -206,5 +205,5 @@ async def get_customer(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}",
+            detail=f"Database error: {e!s}",
         )

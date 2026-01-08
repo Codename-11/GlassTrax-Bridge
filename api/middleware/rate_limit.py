@@ -13,11 +13,11 @@ Implements per-API-key rate limiting using slowapi.
 Each API key has its own rate limit (requests per minute).
 """
 
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 
 def get_api_key_identifier(request: Request) -> str:

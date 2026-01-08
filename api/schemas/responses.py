@@ -12,7 +12,8 @@ Common Response Schemas
 Pydantic models for standardized API responses.
 """
 
-from typing import Any, Generic, List, Optional, TypeVar
+from typing import Generic, TypeVar
+
 from pydantic import BaseModel, Field
 
 T = TypeVar("T")
@@ -22,8 +23,8 @@ class APIResponse(BaseModel, Generic[T]):
     """Standard API response wrapper"""
 
     success: bool = True
-    message: Optional[str] = None
-    data: Optional[T] = None
+    message: str | None = None
+    data: T | None = None
 
 
 class PaginationMeta(BaseModel):
@@ -41,16 +42,16 @@ class PaginatedResponse(BaseModel, Generic[T]):
     """Paginated API response"""
 
     success: bool = True
-    data: List[T] = Field(default_factory=list)
+    data: list[T] = Field(default_factory=list)
     pagination: PaginationMeta
 
 
 class ErrorDetail(BaseModel):
     """Error detail for validation errors"""
 
-    field: Optional[str] = None
+    field: str | None = None
     message: str
-    code: Optional[str] = None
+    code: str | None = None
 
 
 class ErrorResponse(BaseModel):
@@ -58,8 +59,8 @@ class ErrorResponse(BaseModel):
 
     success: bool = False
     error: str
-    details: Optional[List[ErrorDetail]] = None
-    request_id: Optional[str] = None
+    details: list[ErrorDetail] | None = None
+    request_id: str | None = None
 
 
 class HealthResponse(BaseModel):

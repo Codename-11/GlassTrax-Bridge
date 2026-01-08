@@ -88,7 +88,7 @@ class TestValidateTable:
 
     def test_disallowed_table_fails(self, query_service):
         """Disallowed table should raise ValueError."""
-        with pytest.raises(ValueError, match="not in allowed tables"):
+        with pytest.raises(ValueError, match="not in agent's allowed_tables"):
             query_service._validate_table("forbidden_table")
 
     def test_error_lists_allowed_tables(self, query_service):
@@ -312,4 +312,4 @@ class TestExecute:
                         result = service.execute(request)
 
                         assert result.success is False
-                        assert "not in allowed tables" in result.error
+                        assert "not in agent's allowed_tables" in result.error

@@ -17,7 +17,7 @@ Contains endpoint routers for different resources:
 """
 
 from .customers import router as customers_router
-from .orders import router as orders_router
 from .keys import router as keys_router
+from .orders import router as orders_router
 
-__all__ = ["customers_router", "orders_router", "keys_router"]
+__all__ = ["customers_router", "keys_router", "orders_router"]
