@@ -13,8 +13,21 @@ Pydantic models for customer data validation and serialization.
 Based on GlassTrax 'customer' and 'customer_contacts' tables.
 """
 
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field
+
+
+def _coerce_str(v):
+    """Coerce int/float to string for database fields that may return numeric types."""
+    if v is None:
+        return None
+    return str(v).strip() if not isinstance(v, str) else v.strip()
+
+
+# Type that accepts int/float and coerces to str (for fields like customer_id, route_id)
+CoercedStr = Annotated[str, BeforeValidator(_coerce_str)]
+CoercedStrOrNone = Annotated[str | None, BeforeValidator(_coerce_str)]
 
 
 class CustomerContact(BaseModel):
@@ -50,9 +63,9 @@ class CustomerAddress(BaseModel):
 class CustomerBase(BaseModel):
     """Base customer fields"""
 
-    customer_id: str = Field(..., max_length=6, description="Customer ID (6 char)")
+    customer_id: CoercedStr = Field(..., max_length=6, description="Customer ID (6 char)")
     customer_name: str = Field(..., max_length=30, description="Customer name")
-    route_id: str | None = Field(None, max_length=2, description="Delivery route ID")
+    route_id: CoercedStrOrNone = Field(None, max_length=2, description="Delivery route ID")
 
 
 class CustomerResponse(CustomerBase):
@@ -98,9 +111,9 @@ class CustomerResponse(CustomerBase):
 class CustomerListResponse(BaseModel):
     """Simplified customer for list views"""
 
-    customer_id: str
+    customer_id: CoercedStr
     customer_name: str
-    route_id: str | None = None
+    route_id: CoercedStrOrNone = None
     route_name: str | None = None
     main_city: str | None = None
     main_state: str | None = None

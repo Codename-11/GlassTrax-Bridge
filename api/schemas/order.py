@@ -17,8 +17,21 @@ Status: open_closed_flag - 'O' = Open, 'C' = Closed
 """
 
 from datetime import date
+from typing import Annotated
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, Field, field_validator
+
+
+def _coerce_str(v):
+    """Coerce int/float to string for database fields that may return numeric types."""
+    if v is None:
+        return None
+    return str(v).strip() if not isinstance(v, str) else v.strip()
+
+
+# Type that accepts int/float and coerces to str (for fields like customer_id, po_no, pay_type)
+CoercedStr = Annotated[str, BeforeValidator(_coerce_str)]
+CoercedStrOrNone = Annotated[str | None, BeforeValidator(_coerce_str)]
 
 
 def parse_glasstrax_date(date_str: str | None) -> date | None:
@@ -76,7 +89,7 @@ class OrderBase(BaseModel):
     """Base order fields"""
 
     so_no: int = Field(..., description="Sales order number")
-    customer_id: str = Field(..., max_length=6, description="Customer ID")
+    customer_id: CoercedStr = Field(..., max_length=6, description="Customer ID")
     order_date: date | None = Field(None, description="Order date")
 
 
@@ -105,9 +118,9 @@ class OrderResponse(OrderBase):
     expiration_date: date | None = None
 
     # References
-    customer_po_no: str | None = None
+    customer_po_no: CoercedStrOrNone = None
     inside_salesperson: str | None = None
-    route_id: str | None = None
+    route_id: CoercedStrOrNone = None
 
     # Contact
     buyer_first_name: str | None = None
@@ -124,7 +137,7 @@ class OrderResponse(OrderBase):
     warehouse_id: str | None = None
 
     # Financial
-    pay_type: str | None = None
+    pay_type: CoercedStrOrNone = None
     taxable: bool | None = None
     currency_id: str | None = None
     amount_paid: float | None = None
@@ -157,16 +170,16 @@ class OrderListResponse(BaseModel):
     """Simplified order for list views"""
 
     so_no: int
-    customer_id: str
+    customer_id: CoercedStr
     customer_name: str | None = None
     order_date: date | None = None
     job_name: str | None = None
     open_closed_flag: str | None = None
     status: str | None = None
     ship_method: str | None = None
-    customer_po_no: str | None = None
+    customer_po_no: CoercedStrOrNone = None
     inside_salesperson: str | None = None
-    route_id: str | None = None
+    route_id: CoercedStrOrNone = None
     line_count: int | None = None
     total_amount: float | None = None
 
@@ -204,8 +217,8 @@ class OrderExistsResponse(BaseModel):
 
     exists: bool = Field(..., description="Whether the order exists")
     so_no: int | None = Field(None, description="Sales order number (if exists)")
-    customer_id: str | None = Field(None, description="Customer ID (if exists)")
+    customer_id: CoercedStrOrNone = Field(None, description="Customer ID (if exists)")
     customer_name: str | None = Field(None, description="Customer name (if exists)")
-    customer_po_no: str | None = Field(None, description="Customer PO number (if exists)")
+    customer_po_no: CoercedStrOrNone = Field(None, description="Customer PO number (if exists)")
     job_name: str | None = Field(None, description="Job name (if exists)")
     status: str | None = Field(None, description="Order status - Open/Closed (if exists)")
