@@ -1636,6 +1636,12 @@ async def update_config(
         get_api_settings.cache_clear()
         get_db_settings.cache_clear()
 
+        # Reset GlassTrax service if agent or database settings changed
+        agent_or_db_fields = [f for f in changed if f.startswith("agent.") or f.startswith("database.")]
+        if agent_or_db_fields:
+            from api.dependencies import reset_glasstrax_service
+            reset_glasstrax_service()
+
         # Check if any changed fields require restart
         restart_fields = config_service.get_restart_required_fields()
         restart_required_changes = [f for f in changed if f in restart_fields]
