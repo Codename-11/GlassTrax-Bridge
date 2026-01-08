@@ -782,11 +782,27 @@ class GlassTraxService:
         """Get order by number via agent (agent mode)"""
         from api.services.agent_schemas import FilterCondition, JoinClause
 
+        # Columns needed from sales_orders_headers + customer join
+        header_columns = [
+            "h.so_no", "h.customer_id", "h.branch_id", "h.job_name", "h.quotation_no", "h.type",
+            "h.open_closed_flag", "h.credit_hold_flag", "h.verification_hold",
+            "h.order_date", "h.ship_date", "h.delivery_date", "h.quotation_date", "h.expiration_date",
+            "h.customer_po_no", "h.inside_salesperson", "h.route_id",
+            "h.buyer_first_name", "h.buyer_last_name", "h.phone", "h.email",
+            "h.billing_name", "h.billing_address_1", "h.billing_address_2",
+            "h.billing_city", "h.billing_state", "h.billing_country", "h.billing_zip_code",
+            "h.shipping_name", "h.shipping_address_1", "h.shipping_address_2",
+            "h.shipping_city", "h.shipping_state", "h.shipping_country", "h.shipping_zip_code",
+            "h.ship_method", "h.warehouse_id", "h.pay_type", "h.taxable_flag",
+            "h.currency_id", "h.amount_paid", "h.surcharge",
+            "c.customer_name",  # From joined customer table
+        ]
+
         # Get order header
         result = await self.agent_client.query_table(
             table="sales_orders_headers",
             alias="h",
-            columns=None,  # All columns
+            columns=header_columns,
             filters=[FilterCondition(column="h.so_no", operator="=", value=so_no)],
             joins=[
                 JoinClause(
