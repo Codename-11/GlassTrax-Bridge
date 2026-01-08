@@ -9,471 +9,130 @@ Multi-tenant REST API platform for read-only access to GlassTrax ERP (Pervasive 
 - **32-bit Python required** - Uses bundled `python32/` for Pervasive ODBC compatibility
 - **Windows-only for full functionality** - Pervasive ODBC driver is Windows-only
 
+## Internal Documentation
+
+Reference these docs for detailed information:
+
+| Document | Purpose |
+|----------|---------|
+| `docs-internal/PATTERNS.md` | Development patterns (agent mode, testing, type coercion) |
+| `docs-internal/GLASSTRAX-DATABASE.md` | Pervasive schema, column names, SQL quirks |
+| `docs-internal/EXTENDING.md` | Adding endpoints, models, migrations |
+| `docs-internal/TESTING.md` | Test infrastructure and mocking |
+| `docs-internal/API.md` | API architecture details |
+| `docs-internal/PORTAL.md` | Portal component patterns |
+
+**Always reference `GLASSTRAX-DATABASE.md` for actual Pervasive column names when writing queries.**
+
 ## Versioning
 
 **Single source of truth:** `VERSION` file in project root
 
-| Component | How version is read |
-|-----------|---------------------|
-| API | `api/config.py` → `get_version()` reads `VERSION` at runtime |
-| Portal | `portal/package.json` → run `npm run sync-version` |
-| Docs | `docs/package.json` → run `npm run sync-version` |
-
-To update version:
 ```powershell
+# Update version
 echo "1.1.0" > VERSION
 cd portal && npm run sync-version
 cd ../docs && npm run sync-version
 ```
 
-## Quick Start (Windows)
+## Quick Start
 
 ```powershell
-# One-click development (API + Portal in single terminal)
-.\run_dev.bat
-
-# Or use npm directly
+# Development (API + Portal)
 npm install && npm run dev
+
+# All services at http://localhost:5173
 ```
 
-**All services accessible from single port (5173):**
+## Pre-Commit Checklist
 
-| URL | Description |
-|-----|-------------|
-| http://localhost:5173 | Portal (main UI) |
-| http://localhost:5173/api/docs | API Reference (Swagger) |
-| http://localhost:5173/api/v1/* | REST API endpoints |
-| http://localhost:5173/health | Health check |
+**CRITICAL: Run before EVERY commit to avoid CI failures:**
 
-Documentation: https://codename-11.github.io/GlassTrax-Bridge/
-
-Vite proxies `/api` and `/health` to the backend API.
-Uses `concurrently` for color-coded output. `Ctrl+C` stops all.
+```powershell
+npm run test                    # All tests must pass
+ruff check api/ agent/ --fix    # Python linting
+cd portal && npm run format     # Portal formatting
+```
 
 ## Production Deployment
 
 ### Docker + Windows Agent (Recommended)
 
 ```powershell
-# Windows: install GlassTrax API Agent from Releases
-# Docker host: configure to use agent
+# Windows: install Agent from Releases
+# Docker: configure agent connection
 AGENT_ENABLED=true AGENT_URL=http://192.168.1.100:8001 AGENT_KEY=gta_xxx docker-compose up -d
 ```
 
-Port 3000: Portal + API with GlassTrax access via agent
-
-### Docker Standalone
+### Release Process
 
 ```powershell
-docker-compose up -d
-```
-
-Port 3000: Portal `/`, API `/api/v1` (no GlassTrax access - for testing)
-
-### Windows All-in-One (Beta)
-
-```powershell
-.\run_prod.bat
-```
-
-Everything on port 8000: Portal `/`, API `/api/v1`, Swagger `/api/docs`
-
-Documentation hosted on GitHub Pages: https://codename-11.github.io/GlassTrax-Bridge/
-
-### GlassTrax API Agent Only (Windows)
-
-```powershell
-# Start agent for Docker/external API to connect
-.\agent\run_agent.bat
-
-# Or install as Windows Service (NSSM)
-.\agent\install_service.bat
-```
-
-Runs minimal agent on port 8001 with ODBC access
-
-### Agent Installer (Standalone EXE)
-
-Download from [Releases](https://github.com/Codename-11/GlassTrax-Bridge/releases) or build locally:
-
-```powershell
-# Build installer (requires Inno Setup 6)
-.\build_agent.ps1
-
-# Or use the batch wrapper
-BUILD_AGENT.bat
-```
-
-The installer includes:
-- 32-bit Python runtime (for Pervasive ODBC)
-- System tray application with start/stop controls
-- Auto-start on Windows boot (optional)
-
-## Building Releases
-
-### Local Agent Build
-
-```powershell
-# Build installer
-.\build_agent.ps1
-
-# Clean build from scratch
-.\build_agent.ps1 -Clean
-
-# Build without compiling installer (for testing)
-.\build_agent.ps1 -SkipInstaller
-```
-
-Output: `dist/GlassTraxAPIAgent-X.X.X-Setup.exe`
-
-### Automated Releases (GitHub Actions)
-
-Push a version tag to trigger the release workflow:
-
-```powershell
-# Update VERSION file
+# 1. Update version
 echo "1.1.0" > VERSION
+cd portal && npm run sync-version && cd ../docs && npm run sync-version && cd ..
 
-# Sync versions to package.json files
-cd portal && npm run sync-version
-cd ../docs && npm run sync-version
-
-# Commit and tag
-git add -A
-git commit -m "chore: release v1.1.0"
-git tag v1.1.0
-git push origin main --tags
+# 2. Commit and tag
+git add -A && git commit -m "chore: release v1.1.0"
+git tag v1.1.0 && git push origin master --tags
 ```
 
-The workflow (`.github/workflows/release.yml`) will:
-1. Validate VERSION file matches tag
-2. Build Windows Agent installer
-3. Build and push Docker image to ghcr.io
-4. Create GitHub Release with EXE artifact
-
-### Documentation (GitHub Pages)
-
-Docs auto-deploy to GitHub Pages when `docs/` changes on main:
-- **URL:** https://codename-11.github.io/GlassTrax-Bridge/
-- **Workflow:** `.github/workflows/docs.yml`
-- **Base URL:** Set via `VITEPRESS_BASE=/GlassTrax-Bridge/` (different from app's `/docs/`)
-
-### Docker Images
-
-Pull from GitHub Container Registry:
-
-```bash
-# Latest
-docker pull ghcr.io/codename-11/glasstrax-bridge:latest
-
-# Specific version
-docker pull ghcr.io/codename-11/glasstrax-bridge:1.1.0
-```
+Release workflow runs tests in parallel, then builds agent installer + Docker image.
 
 ## Project Structure
 
 ```
 GlassTrax-Bridge/
-├── VERSION                   # Central version file
-├── CLAUDE.md                 # Claude context (this file)
-├── README.md                 # Project documentation
-├── config.example.yaml       # Example configuration (copy to data/config.yaml)
-├── agent_config.yaml         # Agent configuration (Windows)
-├── pyproject.toml            # Python project config (ruff, pyright, pytest)
-├── requirements.txt          # Python dependencies
 ├── api/                      # FastAPI backend
-│   ├── main.py               # App entry point
-│   ├── config.py             # Settings (reads VERSION)
-│   ├── config_schema.py      # Pydantic config validation
-│   ├── database.py           # SQLite connection
-│   ├── routers/              # API endpoints
-│   ├── models/               # SQLAlchemy models
-│   ├── schemas/              # Pydantic schemas
-│   ├── middleware/           # Auth & request logging
-│   ├── services/             # GlassTrax data access + agent_client
-│   └── utils/                # Shared utilities (logger)
-├── agent/                    # GlassTrax API Agent (Windows ODBC)
-│   ├── main.py               # Agent FastAPI app
-│   ├── cli.py                # CLI entry point (--tray/--service/--console)
-│   ├── tray_app.py           # System tray application (pystray)
-│   ├── config.py             # Agent configuration
-│   ├── query.py              # ODBC query execution
-│   ├── auth.py               # API key authentication
-│   ├── schemas.py            # Request/response models
-│   ├── icons/                # Tray icons (.ico files)
-│   ├── requirements_agent.txt # Minimal deps for standalone build
-│   ├── run_agent.bat         # Manual startup script
-│   ├── install_service.bat   # NSSM service installation
-│   └── uninstall_service.bat # NSSM service removal
-├── portal/                   # React admin portal (Vite + shadcn)
-│   ├── .prettierrc           # Prettier config
-│   └── src/
-│       ├── pages/            # Dashboard, APIKeys, Tenants, Logs, Settings
-│       ├── components/       # UI components
-│       └── lib/              # API client, auth utilities
-├── docs/                     # VitePress user documentation
-├── docs-internal/            # Internal markdown docs
-├── migrations/               # Alembic database migrations
-│   ├── env.py                # Migration environment
-│   ├── versions/             # Migration scripts
-│   └── README.md             # Migration guide
-├── data/                     # SQLite database + config.yaml (gitignored, Docker volume)
-├── python32/                 # Bundled 32-bit Python for ODBC
-├── docker/                   # Docker configuration
-│   ├── Dockerfile            # Single container build
-│   ├── nginx.conf            # Portal + docs routing
-│   └── supervisord.conf      # Process management
-├── alembic.ini               # Alembic configuration
-├── docker-compose.yml        # Container orchestration
-├── run_dev.bat               # Development startup
-├── run_prod.bat              # Production build & run
-├── build_agent.ps1           # Agent installer build script
-├── BUILD_AGENT.bat           # Build wrapper
-├── tests/                    # API tests (pytest)
-│   ├── conftest.py           # Shared fixtures
-│   ├── fixtures/             # Test data and factories
-│   ├── mocks/                # pyodbc and agent mocks
-│   ├── unit/                 # Unit tests
-│   └── integration/          # Router integration tests
-├── tools/                    # Development utilities
-│   ├── inspect.bat           # DSN inspection wrapper
-│   └── inspect_dsn.py        # Database schema explorer
-├── .github/workflows/        # GitHub Actions
-│   ├── release.yml           # Automated release workflow
-│   ├── docs.yml              # Deploy docs to GitHub Pages
-│   └── test.yml              # CI tests on push/PR
-├── build/                    # Build output (gitignored)
-├── dist/                     # Installer output (gitignored)
-└── .build_cache/             # Python embed cache (gitignored)
+│   ├── services/glasstrax.py # GlassTrax data access
+│   └── schemas/              # Pydantic models (use CoercedStr for agent compat)
+├── agent/                    # Windows ODBC agent
+├── portal/                   # React admin portal
+├── docs/                     # VitePress user docs
+├── docs-internal/            # Developer docs (PATTERNS.md, etc.)
+├── tests/                    # API tests
+└── tools/inspect_dsn.py      # Database schema explorer
 ```
 
 ## Configuration
 
-### config.yaml
-
-**Location** (in order of precedence):
-1. `GLASSTRAX_CONFIG_PATH` environment variable
-2. `data/config.yaml` (default - auto-created, persisted in Docker)
-3. `config.yaml` in project root (legacy fallback)
-
-In Docker, config is stored in `data/` so it persists via the volume mount.
-On Windows AIO, it falls back to project root for backwards compatibility.
+**Location:** `data/config.yaml` (auto-created, Docker volume)
 
 ```yaml
 database:
-  friendly_name: "TGI Database"    # Shown in UI
-  dsn: "LIVE"                      # ODBC Data Source Name (configured in Windows ODBC Administrator)
-  readonly: true                    # CRITICAL: Always true
-  timeout: 30
-
-application:
-  timezone: "America/New_York"      # IANA timezone
-
-admin:
-  username: "admin"
-  # password_hash: "..."            # bcrypt hash (optional)
+  dsn: "LIVE"           # ODBC DSN
+  readonly: true        # CRITICAL: Always true
 
 agent:
-  enabled: false                    # Enable agent mode for Docker deployment
-  url: "http://localhost:8001"      # GlassTrax API Agent URL
-  api_key: ""                       # Agent API key (gta_...)
-  timeout: 30                       # Request timeout for agent queries
+  enabled: false        # Enable for Docker deployment
+  url: "http://localhost:8001"
+  api_key: ""           # gta_... prefix
 ```
 
-## API Authentication
+## Key Reminders
 
-### On First Run
-An admin API key is auto-generated and displayed in console. **Save it!**
+### Agent Mode
+- When `agent.enabled=true`, API queries Windows agent via HTTP
+- Agent keys use `gta_` prefix (vs `gtb_` for main API)
+- **JOIN queries require explicit column lists** - see `docs-internal/PATTERNS.md`
 
-### API Keys
-- Prefix: `gtb_XXXXXXXXXXXX...`
-- Header: `X-API-Key: <key>`
-- Stored: bcrypt-hashed in SQLite
+### Pydantic Schemas
+- Use `CoercedStr` type for fields that may arrive as int from agent
+- See `api/schemas/order.py` for examples
 
-### Portal Auth
-- JWT Bearer token after login
-- Login with admin username/password OR API key as password
+### Testing
+- pyodbc mocked in CI (Windows-only)
+- See `docs-internal/TESTING.md` for patterns
 
-## Key API Endpoints
+### Database
+- Use `tools\inspect.bat` to explore GlassTrax schema
+- Dates stored as `YYYYMMDD` strings, may arrive as int from agent
+- All `CHAR` fields are space-padded - always `.strip()`
 
-| Endpoint | Auth | Description |
-|----------|------|-------------|
-| `GET /health` | None | Health check + version + mode |
-| `GET /api/v1/customers` | API Key | List customers |
-| `GET /api/v1/orders` | API Key | List orders |
-| `GET /api/v1/admin/tenants` | Admin | Manage applications |
-| `GET /api/v1/admin/api-keys` | Admin | Manage API keys |
-| `GET /api/v1/admin/access-logs` | Admin | View request logs |
-| `GET/PATCH /api/v1/admin/config` | Admin | View/update config.yaml |
-| `GET /api/v1/admin/dsns` | Admin | List available ODBC DSNs |
-| `POST /api/v1/admin/test-dsn` | Admin | Test DSN connection |
-| `POST /api/v1/admin/test-agent` | Admin | Test agent connection |
-| `POST /api/v1/admin/change-password` | Admin | Change admin password |
-| `GET /api/v1/admin/diagnostics` | Admin | System health checks |
-| `POST /api/v1/admin/restart-server` | Admin | Restart API server |
-| `POST /api/v1/admin/reset-database` | Admin | Reset app database |
-
-## UI Components
-
-Portal uses custom status indicators with animated pulse effects:
-- `StatusIndicator` - Blinking dot for online/offline/warning states
-- `ConnectionStatus` - Database connection display with friendly name
-
-Located in: `portal/src/components/ui/status-indicator.tsx`
-
-## Settings Page
-
-The portal has a Settings page (`/settings`) that allows editing `data/config.yaml`:
-- Uses `ruamel.yaml` to preserve comments and formatting
-- **Pydantic validation** via `api/config_schema.py` before saving
-- Tracks dirty state with unsaved changes warning
-- Indicates which fields require server restart (e.g., DSN changes)
-- **DSN dropdown** - Lists available ODBC DSNs from system, highlights Pervasive DSNs
-- **Test DSN button** - Tests connection before saving, shows table count
-- **Read-Only Mode** - Enforced and disabled in UI (protects ERP data)
-- **Password change** - Update admin password via `/admin/change-password`
-- **Agent settings** - Configure GlassTrax API Agent connection (url, api_key, timeout)
-- **Test Agent button** - Tests agent connection before saving
-- **Docs link** - Quick access to VitePress documentation
-- Excludes sensitive fields (password_hash)
-
-## Testing
-
+### Migrations
 ```powershell
-# Run all tests
-npm run test
-
-# Run specific test suites
-npm run test:api          # API tests (pytest)
-npm run test:agent        # Agent tests (pytest)
-npm run test:portal       # Portal tests (Vitest)
-
-# Run with coverage
-npm run test:coverage     # All with coverage reports
-
-# Portal test modes
-cd portal
-npm run test              # Run once
-npm run test:watch        # Watch mode
-npm run test:ui           # Vitest UI
+python32\python.exe -m alembic upgrade head
 ```
 
-**Test Structure:**
-```
-tests/                    # API tests
-├── conftest.py           # Shared fixtures
-├── fixtures/             # Test data and factories
-├── mocks/                # pyodbc and agent mocks
-├── unit/                 # Unit tests
-└── integration/          # Router integration tests
-
-agent/tests/              # Agent tests
-├── conftest.py           # Agent fixtures
-├── mocks/                # pyodbc mocks
-└── test_*.py             # Test files
-
-portal/src/
-├── __tests__/            # Test utilities and MSW mocks
-├── lib/__tests__/        # API client tests
-└── pages/__tests__/      # Page component tests
-```
-
-**Key Mocking Patterns:**
-- **pyodbc**: Mocked via `tests/mocks/mock_pyodbc.py` (Windows ODBC not available in CI)
-- **GlassTraxService**: Override via FastAPI dependency injection
-- **Portal API calls**: MSW intercepts all axios/fetch requests
-- **SQLite**: In-memory database per test for isolation
-
-## Development Tooling
-
-```powershell
-# Python linting/formatting (configured in pyproject.toml)
-ruff check api/ --fix    # Lint and auto-fix
-ruff format api/         # Format code
-
-# Portal formatting
-cd portal && npm run format        # Format with Prettier
-cd portal && npm run format:check  # Check formatting
-cd portal && npm run lint          # ESLint
-```
-
-## Pre-Commit Checklist
-
-**IMPORTANT:** Before committing, ALWAYS run these checks to avoid CI failures:
-
-```powershell
-# 1. Run all tests
-npm run test              # Runs API, agent, and portal tests
-
-# 2. Run linting (from project root)
-ruff check api/ --fix     # Python linting with auto-fix
-ruff check agent/ --fix   # Agent linting
-
-# 3. Run portal formatting
-cd portal && npm run format && cd ..
-
-# 4. Verify everything passes
-ruff check api/ agent/              # Should show "All checks passed!"
-cd portal && npm run format:check   # Should exit cleanly
-```
-
-If tests fail due to changed error messages or behavior, update the test assertions accordingly.
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| API | FastAPI + Uvicorn |
-| App DB | SQLite + SQLAlchemy |
-| GlassTrax | Pervasive SQL via pyodbc (32-bit) |
-| Portal | React 19 + Vite + shadcn/ui + TanStack Query |
-| Docs | VitePress |
-| Container | Docker + nginx + supervisord |
-
-## Notes for Claude
-
-1. **Always use `python32/`** - The bundled 32-bit Python is required for Pervasive ODBC (Windows direct mode)
-2. **Check VERSION file** - Version is centralized, not hardcoded
-3. **Portal uses TanStack Query** - Data fetching with automatic caching/refetching
-4. **Status indicators animate** - Use CSS `animate-ping` for pulse effect
-5. **Docker is single-container** - nginx + uvicorn managed by supervisord
-6. **Docs decoupled** - Documentation hosted on GitHub Pages only (not bundled with app)
-7. **Root package.json** - Has `npm run dev` using concurrently for API + Portal
-8. **Diagnostics page** - Has server restart and database reset functionality
-9. **friendly_name in data/config.yaml** - Displayed in Dashboard connection status
-10. **api/utils/ contains logger** - `setup_logger` imported by API middleware
-11. **Documentation** - Always keep it up to date for both internal and user-facing documentation
-12. **TODO.md** - Keep it up to date with current features and TODOs. Leverage it for new features and TODOs.
-13. **Config validation** - `api/config_schema.py` validates config.yaml; `config_service.py` handles hot-reload
-14. **Prettier for portal** - Run `npm run format` in portal/ before committing
-15. **Vite proxy** - Dev server proxies `/api` and `/health` to backend API
-16. **API base URL** - Portal uses relative URLs (empty base), Vite proxies in dev, same-origin in prod
-17. **ruff for API** - Run `ruff check api/ --fix` and `ruff format api/` before committing
-18. **Agent mode** - When `agent.enabled=true`, API uses `AgentClient` to query Windows agent via HTTP
-19. **GlassTrax API Agent** - Minimal FastAPI app in `agent/` that handles ODBC queries on Windows
-20. **Agent API key prefix** - Agent keys use `gta_` prefix (vs `gtb_` for main API)
-21. **pyodbc optional** - Not available in Docker; API gracefully handles missing pyodbc in agent mode
-22. **Extending the API** - See `docs-internal/EXTENDING.md` for adding new endpoints, models, and migrations
-23. **Alembic migrations** - Run `python32\python.exe -m alembic upgrade head` after pulling changes
-24. **Existing databases** - Stamp with `alembic stamp head` before first migration run
-25. **New models** - Import in `api/models/__init__.py` AND `migrations/env.py` for autogenerate
-26. **Agent CLI modes** - `--tray` (default EXE), `--service` (NSSM), `--console` (debug)
-27. **Agent tray icons** - Store in `agent/icons/` as .ico files (64x64), generated via `generate_icons.py`
-28. **Build cache** - `.build_cache/` stores downloaded Python embed (gitignored)
-29. **Inno Setup 6** - Required for building installer, download from jrsoftware.org
-30. **Release workflow** - Push `vX.X.X` tag to trigger build + release on GitHub Actions
-31. **Docker registry** - Images published to `ghcr.io/codename-11/glasstrax-bridge`
-32. **Agent version** - Reads from VERSION file dynamically (not hardcoded)
-33. **Agent config location** - Installed mode uses `%APPDATA%\GlassTrax API Agent\` for config and logs (avoids Program Files permission issues)
-34. **Agent logging** - Log file at `agent.log` in config dir, recreated on each run, accessible via tray menu "View Log File"
-35. **Docs workflow** - `.github/workflows/docs.yml` deploys to GitHub Pages on docs/ changes; uses `VITEPRESS_BASE=/GlassTrax-Bridge/`
-36. **Docs URL** - https://codename-11.github.io/GlassTrax-Bridge/ (all docs links should point here)
-37. **Docker + Agent recommended** - Production deployments should use Docker + Windows Agent method
-38. **Testing infrastructure** - pytest for API/agent, Vitest + MSW for portal
-39. **CI workflow** - `.github/workflows/test.yml` runs all tests on push/PR
-40. **pyodbc mocking** - Tests mock pyodbc since it's Windows-only; see `tests/mocks/mock_pyodbc.py`
-41. **Test fixtures** - API fixtures in `tests/conftest.py`, agent in `agent/tests/conftest.py`
-42. **Portal test utilities** - Custom render with providers in `portal/src/__tests__/test-utils.tsx`
-43. **MSW handlers** - Mock API responses in `portal/src/__tests__/mocks/handlers.ts`
-44. **DSN inspection tool** - Use `tools\inspect.bat` to explore GlassTrax database schema (tables, columns, sample data)
-45. **ALWAYS run pre-commit checks** - Before ANY commit, run: `npm run test`, `ruff check api/ agent/ --fix`, `cd portal && npm run format`. CI will fail otherwise!
+### Documentation
+- User docs: https://codename-11.github.io/GlassTrax-Bridge/
+- Keep `docs-internal/` updated with patterns and architecture changes
