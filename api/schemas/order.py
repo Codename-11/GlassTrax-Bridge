@@ -98,7 +98,7 @@ class OrderResponse(OrderBase):
 
     # Header info
     branch_id: str | None = None
-    job_name: str | None = None
+    job_name: CoercedStrOrNone = None
     quotation_no: int | None = None
     type: str | None = None  # Order type
 
@@ -173,7 +173,7 @@ class OrderListResponse(BaseModel):
     customer_id: CoercedStr
     customer_name: str | None = None
     order_date: date | None = None
-    job_name: str | None = None
+    job_name: CoercedStrOrNone = None
     open_closed_flag: str | None = None
     status: str | None = None
     ship_method: str | None = None
@@ -220,5 +220,5 @@ class OrderExistsResponse(BaseModel):
     customer_id: CoercedStrOrNone = Field(None, description="Customer ID (if exists)")
     customer_name: str | None = Field(None, description="Customer name (if exists)")
     customer_po_no: CoercedStrOrNone = Field(None, description="Customer PO number (if exists)")
-    job_name: str | None = Field(None, description="Job name (if exists)")
+    job_name: CoercedStrOrNone = Field(None, description="Job name (if exists)")
     status: str | None = Field(None, description="Order status - Open/Closed (if exists)")
