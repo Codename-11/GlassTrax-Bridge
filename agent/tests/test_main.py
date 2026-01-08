@@ -2,8 +2,6 @@
 Integration tests for agent endpoints.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 
 
 class TestHealthEndpoint:

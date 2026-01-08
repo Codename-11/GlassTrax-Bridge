@@ -26,11 +26,14 @@ Status: open_closed_flag - 'O' = Open, 'C' = Closed
 """
 
 import contextlib
+import logging
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from api.services.agent_client import AgentClient
+
+logger = logging.getLogger(__name__)
 
 # Import pyodbc only when needed (not available in Docker)
 try:
@@ -42,9 +45,13 @@ except ImportError:
     PYODBC_AVAILABLE = False
 
 
-def parse_glasstrax_date(date_str: str | None) -> date | None:
-    """Convert GlassTrax YYYYMMDD string to date object"""
-    if not date_str or len(date_str) != 8 or date_str == "18991230":
+def parse_glasstrax_date(date_val: str | int | None) -> date | None:
+    """Convert GlassTrax YYYYMMDD string or int to date object"""
+    if not date_val:
+        return None
+    # Convert to string if integer (agent may return dates as ints)
+    date_str = str(date_val)
+    if len(date_str) != 8 or date_str == "18991230":
         return None
     try:
         return date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8]))
@@ -762,10 +769,14 @@ class GlassTraxService:
         Returns:
             Order dict with line_items or None if not found
         """
-        if self.is_agent_mode:
-            return await self._get_order_by_number_via_agent(so_no)
-        else:
-            return self._get_order_by_number_direct(so_no)
+        try:
+            if self.is_agent_mode:
+                return await self._get_order_by_number_via_agent(so_no)
+            else:
+                return self._get_order_by_number_direct(so_no)
+        except Exception as e:
+            logger.exception(f"Error fetching order {so_no}: {e}")
+            raise
 
     async def _get_order_by_number_via_agent(self, so_no: int) -> dict[str, Any] | None:
         """Get order by number via agent (agent mode)"""
@@ -1128,10 +1139,14 @@ class GlassTraxService:
         Returns:
             Dict with exists flag and basic order info if found
         """
-        if self.is_agent_mode:
-            return await self._check_order_exists_via_agent(so_no)
-        else:
-            return self._check_order_exists_direct(so_no)
+        try:
+            if self.is_agent_mode:
+                return await self._check_order_exists_via_agent(so_no)
+            else:
+                return self._check_order_exists_direct(so_no)
+        except Exception as e:
+            logger.exception(f"Error checking order exists {so_no}: {e}")
+            raise
 
     async def _check_order_exists_via_agent(self, so_no: int) -> dict[str, Any]:
         """Check order exists via agent (agent mode)"""
@@ -1266,5 +1281,5 @@ class GlassTraxService:
 
             return sorted(tables)
         except Exception as e:
-            print(f"Error getting tables: {e}")
+            logger.error(f"Error getting tables: {e}")
             return []

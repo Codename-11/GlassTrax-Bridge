@@ -5,7 +5,6 @@ The agent uses pyodbc for ODBC database access to GlassTrax.
 This mock allows testing without the actual driver.
 """
 
-from typing import Any
 from unittest.mock import MagicMock
 
 

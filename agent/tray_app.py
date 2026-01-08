@@ -11,7 +11,6 @@ import sys
 import threading
 import webbrowser
 from pathlib import Path
-from typing import Optional
 
 import uvicorn
 from PIL import Image
@@ -55,9 +54,9 @@ class AgentTray:
 
     def __init__(self):
         self._state = self.STATE_STOPPED
-        self._icon: Optional[Icon] = None
-        self._server: Optional[uvicorn.Server] = None
-        self._server_thread: Optional[threading.Thread] = None
+        self._icon: Icon | None = None
+        self._server: uvicorn.Server | None = None
+        self._server_thread: threading.Thread | None = None
         self._config = get_config()
         self._log_file = setup_logging()
         self._logger = logging.getLogger("agent.tray")

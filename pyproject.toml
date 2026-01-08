@@ -66,6 +66,11 @@ ignore = [
     "B904",   # raise from (TODO: fix in separate PR)
     "E402",   # module level import not at top (TODO: fix in separate PR)
     "SIM102", # collapsible if (TODO: fix in separate PR)
+    "SIM105", # contextlib.suppress (TODO: fix in separate PR)
+    "SIM117", # nested with statements (TODO: fix in separate PR)
+    "B023",   # loop variable binding (TODO: fix in separate PR)
+    "RUF005", # tuple concatenation (TODO: fix in separate PR)
+    "RUF059", # unused unpacked variable (TODO: fix in separate PR)
 ]
 
 [tool.ruff.lint.isort]

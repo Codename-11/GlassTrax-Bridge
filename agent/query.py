@@ -4,10 +4,13 @@ Query Execution Service
 Builds and executes SQL queries against GlassTrax via ODBC.
 """
 
+import logging
 from typing import Any
 
 from agent.config import get_config
-from agent.schemas import FilterCondition, JoinClause, OrderBy, QueryRequest, QueryResponse
+from agent.schemas import QueryRequest, QueryResponse
+
+logger = logging.getLogger(__name__)
 
 # pyodbc is optional - may need manual installation
 try:
@@ -228,6 +231,7 @@ class QueryService:
         try:
             # Build and execute query
             sql, params = self._build_query(request)
+            logger.debug(f"Executing query: {sql} with params: {params}")
 
             conn = self._get_connection()
             cursor = conn.cursor()
@@ -250,6 +254,7 @@ class QueryService:
                 # Convert row to list, handling special types
                 result_rows.append([self._convert_value(v) for v in row])
 
+            logger.debug(f"Query returned {len(result_rows)} rows")
             return QueryResponse(
                 success=True,
                 columns=columns,
@@ -259,6 +264,7 @@ class QueryService:
 
         except ValueError as e:
             # Validation errors (bad table/column names)
+            logger.warning(f"Query validation error: {e}")
             return QueryResponse(success=False, error=str(e))
         except Exception as e:
             # Check if this is a pyodbc error (pyodbc may be None in tests/CI)
@@ -273,10 +279,12 @@ class QueryService:
                 error_msg = str(e)
                 if hasattr(e, 'args') and len(e.args) > 1:
                     error_msg = e.args[1]
+                logger.error(f"Database error: {error_msg}")
                 return QueryResponse(success=False, error=f"Database error: {error_msg}")
             else:
                 # Unexpected errors
-                return QueryResponse(success=False, error=f"Unexpected error: {str(e)}")
+                logger.exception(f"Unexpected error executing query: {e}")
+                return QueryResponse(success=False, error=f"Unexpected error: {e!s}")
 
     def _convert_value(self, value: Any) -> Any:
         """Convert database values to JSON-serializable types"""

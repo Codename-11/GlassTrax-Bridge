@@ -2,8 +2,9 @@
 Pytest fixtures for agent tests.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 
 from agent.tests.mocks.mock_pyodbc import create_mock_pyodbc

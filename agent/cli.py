@@ -10,7 +10,6 @@ Entry point with support for different run modes:
 import argparse
 import multiprocessing
 import sys
-from typing import Optional
 
 import uvicorn
 
@@ -18,7 +17,7 @@ from agent import __version__
 from agent.config import get_config
 
 
-def run_server(host: str = "0.0.0.0", port: Optional[int] = None) -> None:
+def run_server(host: str = "0.0.0.0", port: int | None = None) -> None:
     """Run the uvicorn server"""
     config = get_config()
     uvicorn.run(
@@ -43,7 +42,7 @@ def run_tray_mode(auto_start: bool = True) -> None:
     tray.run(auto_start=auto_start)
 
 
-def run_console_mode(host: str, port: Optional[int]) -> None:
+def run_console_mode(host: str, port: int | None) -> None:
     """Run in console mode with visible output"""
     config = get_config()
     actual_port = port or config.port
@@ -65,7 +64,7 @@ def run_console_mode(host: str, port: Optional[int]) -> None:
     run_server(host, port)
 
 
-def run_service_mode(host: str, port: Optional[int]) -> None:
+def run_service_mode(host: str, port: int | None) -> None:
     """Run as background service (no console output)"""
     run_server(host, port)
 

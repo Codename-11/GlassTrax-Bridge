@@ -2,8 +2,9 @@
 Unit tests for agent authentication.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi import HTTPException
 
 

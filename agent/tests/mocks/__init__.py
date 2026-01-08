@@ -3,13 +3,13 @@ Mock implementations for agent tests.
 """
 
 from agent.tests.mocks.mock_pyodbc import (
-    MockCursor,
     MockConnection,
+    MockCursor,
     create_mock_pyodbc,
 )
 
 __all__ = [
-    "MockCursor",
     "MockConnection",
+    "MockCursor",
     "create_mock_pyodbc",
 ]

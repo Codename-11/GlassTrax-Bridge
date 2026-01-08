@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from agent import __version__
 from agent.auth import verify_agent_key
 from agent.config import get_config
-from agent.query import get_query_service, PYODBC_AVAILABLE
+from agent.query import PYODBC_AVAILABLE, get_query_service
 from agent.schemas import HealthResponse, QueryRequest, QueryResponse
 
 
