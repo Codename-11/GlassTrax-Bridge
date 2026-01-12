@@ -238,3 +238,37 @@ class OrderExistsResponse(BaseModel):
     customer_po_no: CoercedStrOrNone = Field(None, description="Customer PO number (if exists)")
     job_name: CoercedStrOrNone = Field(None, description="Job name (if exists)")
     status: str | None = Field(None, description="Order status - Open/Closed (if exists)")
+
+
+class FabOrderResponse(BaseModel):
+    """
+    Fab order line item for SilentFAB preprocessing.
+
+    Fab orders are identified by internal_comment_1 starting with 'F# '.
+    Each line represents a piece of glass requiring waterjet fabrication.
+    """
+
+    fab_number: str = Field(..., description="Fab number (from internal_comment_1, e.g., '1234')")
+    so_no: int = Field(..., description="Sales order number")
+    line_no: int = Field(..., description="Line number within order")
+    customer_name: str | None = Field(None, description="Customer name")
+    customer_po: CoercedStrOrNone = Field(None, description="Customer PO number")
+    job_name: CoercedStrOrNone = Field(None, description="Job name")
+    item_description: str | None = Field(None, description="Glass item description")
+    width: float | None = Field(None, description="Width (size_1)")
+    height: float | None = Field(None, description="Height (size_2)")
+    shape_no: int | None = Field(None, description="Shape number")
+    quantity: float | None = Field(None, description="Order quantity")
+    thickness: float | None = Field(None, description="Glass thickness")
+    order_date: str | None = Field(None, description="Order date (ISO format)")
+    attached_file: str | None = Field(None, description="Attached file path (PDF/DXF from order header)")
+    edgework: str | None = Field(None, description="Edgework summary")
+    fab_details: list[ProcessingDetail] | None = Field(
+        None, description="Fabrication details (holes, notches, etc.)"
+    )
+    edge_details: list[ProcessingDetail] | None = Field(
+        None, description="Edgework details (polish, bevel, etc.)"
+    )
+
+    class Config:
+        from_attributes = True

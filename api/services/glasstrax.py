@@ -1332,6 +1332,299 @@ class GlassTraxService:
         }
 
     # ========================================
+    # Fab Orders (SilentFAB Integration)
+    # ========================================
+
+    async def get_fab_orders(
+        self,
+        order_date: date,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """
+        Get fab orders for a specific date (for SilentFAB preprocessing).
+
+        Fab orders are identified by internal_comment_1 starting with 'F# '.
+
+        Args:
+            order_date: Order date to filter by
+            page: Page number (1-indexed)
+            page_size: Number of items per page
+
+        Returns:
+            Tuple of (list of fab order line items, total count)
+        """
+        if self.is_agent_mode:
+            return await self._get_fab_orders_via_agent(order_date, page, page_size)
+        else:
+            return self._get_fab_orders_direct(order_date, page, page_size)
+
+    async def _get_fab_orders_via_agent(
+        self,
+        order_date: date,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Get fab orders via agent (agent mode)"""
+        from api.services.agent_schemas import FilterCondition, JoinClause, OrderBy
+
+        date_str = format_date_for_query(order_date)
+
+        # Build filters for fab orders
+        filters: list[FilterCondition] = [
+            FilterCondition(column="h.type", operator="=", value="S"),
+            FilterCondition(column="h.order_date", operator="=", value=date_str),
+            FilterCondition(column="d.internal_comment_1", operator="LIKE", value="F# %"),
+        ]
+
+        # Get total count first
+        # Note: Agent doesn't support COUNT with JOINs easily, so we'll get all and count
+        offset = (page - 1) * page_size
+
+        result = await self.agent_client.query_table(
+            table="sales_order_detail",
+            alias="d",
+            columns=[
+                "d.internal_comment_1",
+                "h.so_no",
+                "d.so_line_no",
+                "c.customer_name",
+                "h.customer_po_no",
+                "h.job_name",
+                "d.item_description",
+                "d.size_1",
+                "d.size_2",
+                "d.shape_no",
+                "d.order_qty",
+                "d.overall_thickness",
+                "h.attached_file",
+            ],
+            filters=filters,
+            joins=[
+                JoinClause(
+                    table="sales_orders_headers",
+                    alias="h",
+                    join_type="INNER",
+                    on_left="d.so_no",
+                    on_right="h.so_no",
+                    additional_conditions="d.branch_id = h.branch_id AND d.quotation_no = h.quotation_no",
+                ),
+                JoinClause(
+                    table="customer",
+                    alias="c",
+                    join_type="INNER",
+                    on_left="h.customer_id",
+                    on_right="c.customer_id",
+                ),
+            ],
+            order_by=[
+                OrderBy(column="h.so_no", direction="ASC"),
+                OrderBy(column="d.so_line_no", direction="ASC"),
+            ],
+            limit=page_size,
+            offset=offset,
+        )
+
+        # Build fab orders list
+        fab_orders = []
+        so_lines_for_processing: list[tuple[int, int]] = []
+
+        for row in result.rows:
+            item = dict(zip([c.lower() for c in result.columns], row, strict=False))
+
+            # Extract fab number from internal_comment_1 (e.g., "F# 1234" -> "1234")
+            internal_comment = item.get("internal_comment_1", "")
+            if isinstance(internal_comment, str):
+                internal_comment = internal_comment.strip()
+                fab_number = internal_comment[3:].strip() if internal_comment.startswith("F# ") else internal_comment
+            else:
+                fab_number = str(internal_comment) if internal_comment else ""
+
+            so_no = item.get("so_no")
+            line_no = item.get("so_line_no")
+            so_lines_for_processing.append((so_no, line_no))
+
+            # Strip string fields
+            for key in ["customer_name", "customer_po_no", "job_name", "item_description"]:
+                if item.get(key) and isinstance(item[key], str):
+                    item[key] = item[key].strip() or None
+
+            # Get attached file path and strip whitespace
+            attached_file = item.get("attached_file")
+            if attached_file and isinstance(attached_file, str):
+                attached_file = attached_file.strip() or None
+
+            fab_orders.append({
+                "fab_number": fab_number,
+                "so_no": so_no,
+                "line_no": line_no,
+                "customer_name": item.get("customer_name"),
+                "customer_po": item.get("customer_po_no"),
+                "job_name": item.get("job_name"),
+                "item_description": item.get("item_description"),
+                "width": item.get("size_1"),
+                "height": item.get("size_2"),
+                "shape_no": item.get("shape_no"),
+                "quantity": item.get("order_qty"),
+                "thickness": item.get("overall_thickness"),
+                "order_date": order_date.isoformat(),
+                "attached_file": attached_file,
+            })
+
+        # Get processing info for all lines
+        if fab_orders:
+            # Get unique SO numbers
+            unique_so_nos = list(set(so for so, _ in so_lines_for_processing))
+            all_processing: dict[int, dict[int, dict[str, Any]]] = {}
+
+            for so_no in unique_so_nos:
+                proc_info = await self._get_line_processing_info_via_agent(so_no)
+                all_processing[so_no] = proc_info
+
+            # Enrich fab orders with processing info
+            for order in fab_orders:
+                so_no = order["so_no"]
+                line_no = order["line_no"]
+                proc = all_processing.get(so_no, {}).get(line_no, {})
+                order["fab_details"] = proc.get("fab_details", [])
+                order["edge_details"] = proc.get("edge_details", [])
+                order["edgework"] = proc.get("edgework")
+
+        # For total count, we'd need another query - for now return len as estimate
+        total = len(fab_orders) + offset if len(fab_orders) == page_size else len(fab_orders) + offset
+
+        return fab_orders, total
+
+    def _get_fab_orders_direct(
+        self,
+        order_date: date,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Get fab orders via direct ODBC (direct mode)"""
+        cursor = self._get_cursor()
+        date_str = format_date_for_query(order_date)
+
+        # Count query
+        count_query = """
+            SELECT COUNT(*) as total
+            FROM sales_order_detail d
+            INNER JOIN sales_orders_headers h
+                ON d.branch_id = h.branch_id
+                AND d.so_no = h.so_no
+                AND d.quotation_no = h.quotation_no
+            WHERE h.type = 'S'
+              AND h.order_date = ?
+              AND LEFT(d.internal_comment_1, 3) = 'F# '
+        """
+        cursor.execute(count_query, [date_str])
+        total = cursor.fetchone()[0]
+
+        # Get paginated fab orders
+        offset = (page - 1) * page_size
+        fetch_count = offset + page_size
+
+        query = f"""
+            SELECT TOP {fetch_count}
+                d.internal_comment_1,
+                h.so_no,
+                d.so_line_no,
+                c.customer_name,
+                h.customer_po_no,
+                h.job_name,
+                d.item_description,
+                d.size_1,
+                d.size_2,
+                d.shape_no,
+                d.order_qty,
+                d.overall_thickness,
+                h.attached_file
+            FROM sales_order_detail d
+            INNER JOIN sales_orders_headers h
+                ON d.branch_id = h.branch_id
+                AND d.so_no = h.so_no
+                AND d.quotation_no = h.quotation_no
+            INNER JOIN customer c
+                ON h.customer_id = c.customer_id
+            WHERE h.type = 'S'
+              AND h.order_date = ?
+              AND LEFT(d.internal_comment_1, 3) = 'F# '
+            ORDER BY h.so_no, d.so_line_no
+        """
+
+        cursor.execute(query, [date_str])
+        columns = [col[0].lower() for col in cursor.description]
+        rows = cursor.fetchall()
+
+        # Slice for pagination (Pervasive doesn't support OFFSET)
+        all_items = [dict(zip(columns, row, strict=False)) for row in rows]
+        page_items = all_items[offset:offset + page_size]
+
+        # Build fab orders list
+        fab_orders = []
+        so_lines_for_processing: list[tuple[int, int]] = []
+
+        for item in page_items:
+            # Extract fab number from internal_comment_1
+            internal_comment = item.get("internal_comment_1", "")
+            if isinstance(internal_comment, str):
+                internal_comment = internal_comment.strip()
+                fab_number = internal_comment[3:].strip() if internal_comment.startswith("F# ") else internal_comment
+            else:
+                fab_number = str(internal_comment) if internal_comment else ""
+
+            so_no = item.get("so_no")
+            line_no = item.get("so_line_no")
+            so_lines_for_processing.append((so_no, line_no))
+
+            # Strip string fields
+            for key in ["customer_name", "customer_po_no", "job_name", "item_description"]:
+                if item.get(key) and isinstance(item[key], str):
+                    item[key] = item[key].strip() or None
+
+            # Get attached file path and strip whitespace
+            attached_file = item.get("attached_file")
+            if attached_file and isinstance(attached_file, str):
+                attached_file = attached_file.strip() or None
+
+            fab_orders.append({
+                "fab_number": fab_number,
+                "so_no": so_no,
+                "line_no": line_no,
+                "customer_name": item.get("customer_name"),
+                "customer_po": item.get("customer_po_no"),
+                "job_name": item.get("job_name"),
+                "item_description": item.get("item_description"),
+                "width": item.get("size_1"),
+                "height": item.get("size_2"),
+                "shape_no": item.get("shape_no"),
+                "quantity": item.get("order_qty"),
+                "thickness": item.get("overall_thickness"),
+                "order_date": order_date.isoformat(),
+                "attached_file": attached_file,
+            })
+
+        # Get processing info for all lines
+        if fab_orders:
+            unique_so_nos = list(set(so for so, _ in so_lines_for_processing))
+            all_processing: dict[int, dict[int, dict[str, Any]]] = {}
+
+            for so_no in unique_so_nos:
+                proc_info = self._get_line_processing_info_direct(cursor, so_no)
+                all_processing[so_no] = proc_info
+
+            # Enrich fab orders with processing info
+            for order in fab_orders:
+                so_no = order["so_no"]
+                line_no = order["line_no"]
+                proc = all_processing.get(so_no, {}).get(line_no, {})
+                order["fab_details"] = proc.get("fab_details", [])
+                order["edge_details"] = proc.get("edge_details", [])
+                order["edgework"] = proc.get("edgework")
+
+        return fab_orders, total
+
+    # ========================================
     # Utility Methods
     # ========================================
 

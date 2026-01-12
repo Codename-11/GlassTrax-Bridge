@@ -118,6 +118,9 @@ SELECT "order" FROM sales_orders_headers  -- "order" is reserved
 | `inside_salesperson` | CHAR(3) | Sales rep code |
 | `job_name` | CHAR(30) | Job/project name |
 | `pay_type` | CHAR(1) | Payment type code |
+| `attached_file` | CHAR(256) | Attached PDF/DXF file path (e.g., `F:\drawings\2026\1 2026\12\file.pdf`) |
+
+> **Note**: The GlassTrax UI supports multiple file attachments per order, but only the first/primary file path is stored in the `attached_file` column. The storage location for additional attachments is unknown (may be stored externally or in a non-ODBC-accessible format).
 
 **Table**: `sales_order_detail` (542,314 rows, 190 columns)
 
@@ -138,6 +141,8 @@ SELECT "order" FROM sales_orders_headers  -- "order" is reserved
 | `processing_id` | CHAR(5) | FK to processing_charges |
 | `shape_no` | NUMERIC(3) | Shape number reference |
 | `coating_id_01` - `_10` | CHAR(10) | Coating IDs (up to 10) |
+| `internal_comment_1` | CHAR(50) | Internal comment - fab orders start with `F# ` (e.g., `F# 4173`) |
+| `attached_file` | CHAR(256) | Line-level attachment path (usually empty, see header) |
 
 ### Processing Tables
 

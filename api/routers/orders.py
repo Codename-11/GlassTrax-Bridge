@@ -24,11 +24,13 @@ from api.dependencies import get_glasstrax_service
 from api.middleware import APIKeyInfo, get_api_key, require_orders_read
 from api.middleware.rate_limit import limiter
 from api.schemas.order import (
+    FabOrderResponse,
     OrderAddress,
     OrderExistsResponse,
     OrderLineItem,
     OrderListResponse,
     OrderResponse,
+    ProcessingDetail,
 )
 from api.schemas.responses import APIResponse, PaginatedResponse, PaginationMeta
 from api.services.glasstrax import GlassTraxService
@@ -109,6 +111,92 @@ async def list_orders(
             )
             for o in orders_data
         ]
+
+        total_pages = math.ceil(total / page_size) if total > 0 else 1
+
+        return PaginatedResponse(
+            success=True,
+            data=orders,
+            pagination=PaginationMeta(
+                page=page,
+                page_size=page_size,
+                total_items=total,
+                total_pages=total_pages,
+                has_next=page < total_pages,
+                has_previous=page > 1,
+            ),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {e!s}",
+        ) from e
+
+
+@router.get(
+    "/fabs",
+    response_model=PaginatedResponse[FabOrderResponse],
+    summary="List fab orders for a date",
+    description="Get fab orders (waterjet fabrication) for a specific date. For SilentFAB integration.",
+)
+@limiter.limit("60/minute", key_func=get_api_key_identifier)
+async def list_fab_orders(
+    request: Request,
+    api_key: APIKeyInfo = Depends(get_api_key),
+    _: None = Depends(require_orders_read),
+    service: GlassTraxService = Depends(get_glasstrax_service),
+    order_date: date = Query(..., alias="date", description="Order date (YYYY-MM-DD)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(100, ge=1, le=500, description="Items per page"),
+) -> PaginatedResponse[FabOrderResponse]:
+    """
+    List fab orders for a specific date (for SilentFAB preprocessing).
+
+    Fab orders are identified by internal_comment_1 starting with 'F# '.
+    Returns line items with fabrication and edgework details.
+
+    - **date**: Order date to filter by (required)
+    - **page**: Page number (starts at 1)
+    - **page_size**: Number of items per page (max 500)
+    """
+    try:
+        fab_orders, total = await service.get_fab_orders(
+            order_date=order_date,
+            page=page,
+            page_size=page_size,
+        )
+
+        # Convert to response models
+        orders = []
+        for o in fab_orders:
+            fab_details = None
+            if o.get("fab_details"):
+                fab_details = [ProcessingDetail(**d) for d in o["fab_details"]]
+            edge_details = None
+            if o.get("edge_details"):
+                edge_details = [ProcessingDetail(**d) for d in o["edge_details"]]
+
+            orders.append(
+                FabOrderResponse(
+                    fab_number=o.get("fab_number", ""),
+                    so_no=o.get("so_no"),
+                    line_no=o.get("line_no"),
+                    customer_name=o.get("customer_name"),
+                    customer_po=o.get("customer_po"),
+                    job_name=o.get("job_name"),
+                    item_description=o.get("item_description"),
+                    width=o.get("width"),
+                    height=o.get("height"),
+                    shape_no=o.get("shape_no"),
+                    quantity=o.get("quantity"),
+                    thickness=o.get("thickness"),
+                    order_date=o.get("order_date"),
+                    attached_file=o.get("attached_file"),
+                    edgework=o.get("edgework"),
+                    fab_details=fab_details,
+                    edge_details=edge_details,
+                )
+            )
 
         total_pages = math.ceil(total / page_size) if total > 0 else 1
 
