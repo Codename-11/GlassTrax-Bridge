@@ -150,12 +150,78 @@ GET /api/v1/orders
 | `page` | int | 1 | Page number |
 | `page_size` | int | 20 | Items per page (max 100) |
 | `customer_id` | string | - | Filter by customer |
+| `date` | string | - | Filter by date (YYYY-MM-DD or YYYYMMDD) |
+| `status` | string | - | Filter by status ("pending", "complete", etc.) |
 
 #### Get Order by ID
 
 ```
 GET /api/v1/orders/{order_id}
 ```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "so_no": "123456",
+    "order_date": "2026-01-11",
+    "customer_id": "CUST001",
+    "customer_name": "ABC Glass Co",
+    "has_fab": true,
+    "edgework": "Flat Polish",
+    "line_items": [
+      {
+        "line_no": 1,
+        "description": "1/4\" Clear",
+        "quantity": 1,
+        "width": 48.0,
+        "height": 72.0,
+        "has_fab": true,
+        "edgework": "Flat Polish",
+        "fab_details": [
+          {
+            "description": "1/2\" Hole",
+            "count": 2,
+            "process_group": "FAB"
+          },
+          {
+            "description": "Hinge Notch",
+            "count": 2,
+            "process_group": "FAB"
+          }
+        ],
+        "edge_details": [
+          {
+            "description": "Flat Polish",
+            "count": 213,
+            "process_group": "EDGE"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Fabrication Details
+
+Order line items include `fab_details` and `edge_details` arrays extracted from the `so_processing` table:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `fab_details` | array | Fabrication operations (holes, notches, hinges) |
+| `edge_details` | array | Edgework operations (polish, bevel, seam) |
+
+Each detail object contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `description` | string | Processing description (e.g., "1/2\" Hole") |
+| `count` | int | Number of operations of this type |
+| `process_group` | string | Group from `processing_charges` table (FAB, EDGE, etc.) |
+
+**Use Case:** SilentFAB uses these details to cross-validate detected DXF features against expected fabrication from GlassTrax.
 
 ---
 

@@ -861,6 +861,8 @@ class GlassTraxService:
             proc = processing_info.get(line_no, {})
             item["has_fab"] = proc.get("has_fab", False)
             item["edgework"] = proc.get("edgework")
+            item["fab_details"] = proc.get("fab_details", [])
+            item["edge_details"] = proc.get("edge_details", [])
 
             # Compute block_size from size_1 x size_2
             size_1 = item.get("size_1")
@@ -879,7 +881,13 @@ class GlassTraxService:
         Get processing info (fab, edgework) for all lines via agent.
 
         Returns:
-            Dict mapping line_no to {has_fab: bool, edgework: str|None}
+            Dict mapping line_no to:
+            {
+                has_fab: bool,
+                edgework: str|None,
+                fab_details: list[{description, count, process_group}],
+                edge_details: list[{description, count, process_group}]
+            }
         """
         from api.services.agent_schemas import FilterCondition, JoinClause, OrderBy
 
@@ -911,7 +919,7 @@ class GlassTraxService:
             ],
         )
 
-        # Build processing info per line
+        # Build processing info per line with detailed counts
         result: dict[int, dict[str, Any]] = {}
 
         for row in proc_result.rows:
@@ -925,17 +933,48 @@ class GlassTraxService:
                 description = description.strip()
 
             if line_no not in result:
-                result[line_no] = {"has_fab": False, "edgework": None}
+                result[line_no] = {
+                    "has_fab": False,
+                    "edgework": None,
+                    "fab_details": {},  # description -> count
+                    "edge_details": {},  # description -> count
+                }
 
-            if process_group == "FAB":
+            if process_group == "FAB" and description:
                 result[line_no]["has_fab"] = True
-            elif process_group == "EDGE" and description:
-                # If multiple edge operations, concatenate with comma
-                existing = result[line_no]["edgework"]
-                if existing:
-                    result[line_no]["edgework"] = f"{existing}, {description}"
+                # Count fab operations by description
+                if description in result[line_no]["fab_details"]:
+                    result[line_no]["fab_details"][description] += 1
                 else:
+                    result[line_no]["fab_details"][description] = 1
+
+            elif process_group == "EDGE" and description:
+                # Count edge operations by description
+                if description in result[line_no]["edge_details"]:
+                    result[line_no]["edge_details"][description] += 1
+                else:
+                    result[line_no]["edge_details"][description] = 1
+
+                # Also build edgework string (for backwards compatibility)
+                existing = result[line_no]["edgework"]
+                if existing and description not in existing:
+                    result[line_no]["edgework"] = f"{existing}, {description}"
+                elif not existing:
                     result[line_no]["edgework"] = description
+
+        # Convert detail dicts to lists of ProcessingDetail format
+        for line_no in result:
+            fab_dict = result[line_no]["fab_details"]
+            edge_dict = result[line_no]["edge_details"]
+
+            result[line_no]["fab_details"] = [
+                {"description": desc, "count": count, "process_group": "FAB"}
+                for desc, count in fab_dict.items()
+            ]
+            result[line_no]["edge_details"] = [
+                {"description": desc, "count": count, "process_group": "EDGE"}
+                for desc, count in edge_dict.items()
+            ]
 
         return result
 
@@ -1005,6 +1044,8 @@ class GlassTraxService:
             proc = processing_info.get(line_no, {})
             item["has_fab"] = proc.get("has_fab", False)
             item["edgework"] = proc.get("edgework")
+            item["fab_details"] = proc.get("fab_details", [])
+            item["edge_details"] = proc.get("edge_details", [])
 
             # Compute block_size from size_1 x size_2
             size_1 = item.get("size_1")
@@ -1023,7 +1064,13 @@ class GlassTraxService:
         Get processing info (fab, edgework) for all lines in an order.
 
         Returns:
-            Dict mapping line_no to {has_fab: bool, edgework: str|None}
+            Dict mapping line_no to:
+            {
+                has_fab: bool,
+                edgework: str|None,
+                fab_details: list[{description, count, process_group}],
+                edge_details: list[{description, count, process_group}]
+            }
         """
         # Query for FAB and EDGE processing per line
         processing_query = """
@@ -1041,26 +1088,58 @@ class GlassTraxService:
         cursor.execute(processing_query, [so_no])
         rows = cursor.fetchall()
 
-        # Build processing info per line
+        # Build processing info per line with detailed counts
         result: dict[int, dict[str, Any]] = {}
 
+        # First pass: collect all operations
         for row in rows:
             line_no = int(row[0])
             process_group = row[1].strip() if row[1] else None
             description = row[2].strip() if row[2] else None
 
             if line_no not in result:
-                result[line_no] = {"has_fab": False, "edgework": None}
+                result[line_no] = {
+                    "has_fab": False,
+                    "edgework": None,
+                    "fab_details": {},  # description -> count
+                    "edge_details": {},  # description -> count
+                }
 
-            if process_group == "FAB":
+            if process_group == "FAB" and description:
                 result[line_no]["has_fab"] = True
-            elif process_group == "EDGE" and description:
-                # If multiple edge operations, concatenate with comma
-                existing = result[line_no]["edgework"]
-                if existing:
-                    result[line_no]["edgework"] = f"{existing}, {description}"
+                # Count fab operations by description
+                if description in result[line_no]["fab_details"]:
+                    result[line_no]["fab_details"][description] += 1
                 else:
+                    result[line_no]["fab_details"][description] = 1
+
+            elif process_group == "EDGE" and description:
+                # Count edge operations by description
+                if description in result[line_no]["edge_details"]:
+                    result[line_no]["edge_details"][description] += 1
+                else:
+                    result[line_no]["edge_details"][description] = 1
+
+                # Also build edgework string (for backwards compatibility)
+                existing = result[line_no]["edgework"]
+                if existing and description not in existing:
+                    result[line_no]["edgework"] = f"{existing}, {description}"
+                elif not existing:
                     result[line_no]["edgework"] = description
+
+        # Convert detail dicts to lists of ProcessingDetail format
+        for line_no in result:
+            fab_dict = result[line_no]["fab_details"]
+            edge_dict = result[line_no]["edge_details"]
+
+            result[line_no]["fab_details"] = [
+                {"description": desc, "count": count, "process_group": "FAB"}
+                for desc, count in fab_dict.items()
+            ]
+            result[line_no]["edge_details"] = [
+                {"description": desc, "count": count, "process_group": "EDGE"}
+                for desc, count in edge_dict.items()
+            ]
 
         return result
 

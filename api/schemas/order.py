@@ -44,6 +44,14 @@ def parse_glasstrax_date(date_str: str | None) -> date | None:
         return None
 
 
+class ProcessingDetail(BaseModel):
+    """Detail of a processing operation from so_processing"""
+
+    description: str = Field(..., description="Processing description (e.g., '1/2\" Hole')")
+    count: int = Field(..., description="Number of operations of this type")
+    process_group: str = Field(..., description="Process group (FAB, EDGE, etc.)")
+
+
 class OrderLineItem(BaseModel):
     """Order line item from sales_order_detail table"""
 
@@ -68,6 +76,14 @@ class OrderLineItem(BaseModel):
     # Processing info (from so_processing + processing_charges)
     has_fab: bool | None = Field(None, description="Has fabrication processing")
     edgework: str | None = Field(None, description="Edgework description")
+
+    # Detailed processing operations with counts
+    fab_details: list[ProcessingDetail] | None = Field(
+        None, description="Fabrication details with counts (holes, notches, etc.)"
+    )
+    edge_details: list[ProcessingDetail] | None = Field(
+        None, description="Edgework details with counts (polish, bevel, etc.)"
+    )
 
     class Config:
         from_attributes = True
