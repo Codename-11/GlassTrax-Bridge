@@ -398,6 +398,7 @@ class QueryService:
         Execute SQL query and return results.
 
         This method runs in a separate thread to allow timeout protection.
+        Creates its own connection since pyodbc connections aren't thread-safe.
 
         Args:
             sql: SQL query string
@@ -407,26 +408,35 @@ class QueryService:
         Returns:
             Tuple of (column names, result rows)
         """
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql, params)
+        check_pyodbc_available()
 
-        # Get column names
-        columns = [col[0] for col in cursor.description] if cursor.description else []
+        # Create a dedicated connection for this thread (pyodbc isn't thread-safe)
+        readonly_str = "Yes" if self.config.readonly else "No"
+        conn_str = f"DSN={self.config.dsn};ReadOnly={readonly_str}"
+        conn = pyodbc.connect(conn_str, timeout=self.config.timeout)
 
-        # Fetch all rows
-        rows = cursor.fetchall()
-        cursor.close()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(sql, params)
 
-        # Convert rows to lists and handle pagination offset
-        result_rows = []
-        for i, row in enumerate(rows):
-            if i < offset:
-                continue
-            # Convert row to list, handling special types
-            result_rows.append([self._convert_value(v) for v in row])
+            # Get column names
+            columns = [col[0] for col in cursor.description] if cursor.description else []
 
-        return columns, result_rows
+            # Fetch all rows
+            rows = cursor.fetchall()
+            cursor.close()
+
+            # Convert rows to lists and handle pagination offset
+            result_rows = []
+            for i, row in enumerate(rows):
+                if i < offset:
+                    continue
+                # Convert row to list, handling special types
+                result_rows.append([self._convert_value(v) for v in row])
+
+            return columns, result_rows
+        finally:
+            conn.close()
 
     def _is_connection_error(self, error_msg: str) -> bool:
         """Check if an error message indicates a connection problem"""
