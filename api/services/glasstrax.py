@@ -1492,15 +1492,10 @@ class GlassTraxService:
                 "attached_file": attached_file,
             })
 
-        # Get processing info for all lines
+        # Get processing info for all lines in ONE batched query
         if fab_orders:
-            # Get unique SO numbers
             unique_so_nos = list(set(so for so, _ in so_lines_for_processing))
-            all_processing: dict[int, dict[int, dict[str, Any]]] = {}
-
-            for so_no in unique_so_nos:
-                proc_info = await self._get_line_processing_info_via_agent(so_no)
-                all_processing[so_no] = proc_info
+            all_processing = await self._get_batch_processing_info_via_agent(unique_so_nos)
 
             # Enrich fab orders with processing info
             for order in fab_orders:
@@ -1515,6 +1510,101 @@ class GlassTraxService:
         total = len(fab_orders) + offset
 
         return fab_orders, total
+
+    async def _get_batch_processing_info_via_agent(
+        self, so_nos: list[int]
+    ) -> dict[int, dict[int, dict[str, Any]]]:
+        """
+        Get processing info for multiple SOs in ONE query (batched).
+
+        Returns:
+            Dict mapping so_no -> line_no -> {has_fab, edgework, fab_details, edge_details}
+        """
+        from api.services.agent_schemas import FilterCondition, JoinClause, OrderBy
+
+        if not so_nos:
+            return {}
+
+        # Query so_processing for ALL SOs at once using IN clause
+        proc_result = await self.agent_client.query_table(
+            table="so_processing",
+            alias="p",
+            columns=[
+                "p.so_no",
+                "p.so_line_no",
+                "pc.process_group",
+                "pc.description",
+            ],
+            filters=[
+                FilterCondition(column="p.so_no", operator="IN", value=so_nos),
+                FilterCondition(column="pc.process_group", operator="IN", value=["FAB", "EDGE"]),
+            ],
+            joins=[
+                JoinClause(
+                    table="processing_charges",
+                    alias="pc",
+                    join_type="INNER",
+                    on_left="p.process_id",
+                    on_right="pc.processing_id",
+                ),
+            ],
+            order_by=[
+                OrderBy(column="p.so_no", direction="ASC"),
+                OrderBy(column="p.so_line_no", direction="ASC"),
+                OrderBy(column="p.process_index", direction="ASC"),
+            ],
+        )
+
+        # Build result structure: so_no -> line_no -> info
+        result: dict[int, dict[int, dict[str, Any]]] = {}
+
+        for row in proc_result.rows:
+            item = dict(zip([c.lower() for c in proc_result.columns], row, strict=False))
+            so_no = item.get("so_no")
+            line_no = item.get("so_line_no")
+            group = item.get("process_group", "").strip() if item.get("process_group") else ""
+            desc = item.get("description", "").strip() if item.get("description") else ""
+
+            if so_no not in result:
+                result[so_no] = {}
+            if line_no not in result[so_no]:
+                result[so_no][line_no] = {
+                    "has_fab": False,
+                    "edgework": None,
+                    "fab_details": [],
+                    "edge_details": [],
+                }
+
+            line_info = result[so_no][line_no]
+
+            if group == "FAB":
+                line_info["has_fab"] = True
+                # Add to fab_details, aggregating counts
+                existing = next((d for d in line_info["fab_details"] if d["description"] == desc), None)
+                if existing:
+                    existing["count"] += 1
+                else:
+                    line_info["fab_details"].append({
+                        "description": desc,
+                        "count": 1,
+                        "process_group": "FAB",
+                    })
+            elif group == "EDGE":
+                # First edge entry becomes edgework summary
+                if line_info["edgework"] is None:
+                    line_info["edgework"] = desc
+                # Add to edge_details
+                existing = next((d for d in line_info["edge_details"] if d["description"] == desc), None)
+                if existing:
+                    existing["count"] += 1
+                else:
+                    line_info["edge_details"].append({
+                        "description": desc,
+                        "count": 1,
+                        "process_group": "EDGE",
+                    })
+
+        return result
 
     def _get_fab_orders_direct(
         self,
@@ -1644,14 +1734,10 @@ class GlassTraxService:
                 "attached_file": attached_file,
             })
 
-        # Get processing info for all lines
+        # Get processing info for all lines in ONE batched query
         if fab_orders:
             unique_so_nos = list(set(so for so, _ in so_lines_for_processing))
-            all_processing: dict[int, dict[int, dict[str, Any]]] = {}
-
-            for so_no in unique_so_nos:
-                proc_info = self._get_line_processing_info_direct(cursor, so_no)
-                all_processing[so_no] = proc_info
+            all_processing = self._get_batch_processing_info_direct(cursor, unique_so_nos)
 
             # Enrich fab orders with processing info
             for order in fab_orders:
@@ -1663,6 +1749,83 @@ class GlassTraxService:
                 order["edgework"] = proc.get("edgework")
 
         return fab_orders, total
+
+    def _get_batch_processing_info_direct(
+        self, cursor: Any, so_nos: list[int]
+    ) -> dict[int, dict[int, dict[str, Any]]]:
+        """
+        Get processing info for multiple SOs in ONE query (batched, direct mode).
+
+        Returns:
+            Dict mapping so_no -> line_no -> {has_fab, edgework, fab_details, edge_details}
+        """
+        if not so_nos:
+            return {}
+
+        # Build IN clause with placeholders
+        placeholders = ",".join("?" * len(so_nos))
+
+        query = f"""
+            SELECT
+                p.so_no,
+                p.so_line_no,
+                pc.process_group,
+                pc.description
+            FROM so_processing p
+            JOIN processing_charges pc ON p.process_id = pc.processing_id
+            WHERE p.so_no IN ({placeholders})
+              AND pc.process_group IN ('FAB', 'EDGE')
+            ORDER BY p.so_no, p.so_line_no, p.process_index
+        """
+
+        cursor.execute(query, so_nos)
+        rows = cursor.fetchall()
+
+        # Build result structure: so_no -> line_no -> info
+        result: dict[int, dict[int, dict[str, Any]]] = {}
+
+        for row in rows:
+            so_no, line_no, group, desc = row
+            group = group.strip() if group else ""
+            desc = desc.strip() if desc else ""
+
+            if so_no not in result:
+                result[so_no] = {}
+            if line_no not in result[so_no]:
+                result[so_no][line_no] = {
+                    "has_fab": False,
+                    "edgework": None,
+                    "fab_details": [],
+                    "edge_details": [],
+                }
+
+            line_info = result[so_no][line_no]
+
+            if group == "FAB":
+                line_info["has_fab"] = True
+                existing = next((d for d in line_info["fab_details"] if d["description"] == desc), None)
+                if existing:
+                    existing["count"] += 1
+                else:
+                    line_info["fab_details"].append({
+                        "description": desc,
+                        "count": 1,
+                        "process_group": "FAB",
+                    })
+            elif group == "EDGE":
+                if line_info["edgework"] is None:
+                    line_info["edgework"] = desc
+                existing = next((d for d in line_info["edge_details"] if d["description"] == desc), None)
+                if existing:
+                    existing["count"] += 1
+                else:
+                    line_info["edge_details"].append({
+                        "description": desc,
+                        "count": 1,
+                        "process_group": "EDGE",
+                    })
+
+        return result
 
     # ========================================
     # Utility Methods
