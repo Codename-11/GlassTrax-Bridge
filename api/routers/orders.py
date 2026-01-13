@@ -145,7 +145,8 @@ async def list_fab_orders(
     api_key: APIKeyInfo = Depends(get_api_key),
     _: None = Depends(require_orders_read),
     service: GlassTraxService = Depends(get_glasstrax_service),
-    order_date: date = Query(..., alias="date", description="Order date (YYYY-MM-DD)"),
+    order_date: date | None = Query(None, alias="date", description="Order date (YYYY-MM-DD)"),
+    ship_date: date | None = Query(None, description="Ship date (YYYY-MM-DD)"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(100, ge=1, le=500, description="Items per page"),
 ) -> PaginatedResponse[FabOrderResponse]:
@@ -155,13 +156,24 @@ async def list_fab_orders(
     Fab orders are identified by internal_comment_1 starting with 'F# '.
     Returns line items with fabrication and edgework details.
 
-    - **date**: Order date to filter by (required)
+    - **date**: Filter by order date (YYYY-MM-DD)
+    - **ship_date**: Filter by ship date (YYYY-MM-DD) - use this for today's shipments
     - **page**: Page number (starts at 1)
     - **page_size**: Number of items per page (max 500)
+
+    At least one of `date` or `ship_date` must be provided.
     """
+    # Require at least one date filter
+    if not order_date and not ship_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one of 'date' or 'ship_date' must be provided",
+        )
+
     try:
         fab_orders, total = await service.get_fab_orders(
             order_date=order_date,
+            ship_date=ship_date,
             page=page,
             page_size=page_size,
         )
@@ -191,6 +203,7 @@ async def list_fab_orders(
                     quantity=o.get("quantity"),
                     thickness=o.get("thickness"),
                     order_date=o.get("order_date"),
+                    ship_date=o.get("ship_date"),
                     attached_file=o.get("attached_file"),
                     edgework=o.get("edgework"),
                     fab_details=fab_details,

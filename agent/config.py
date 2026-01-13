@@ -78,6 +78,7 @@ class AgentConfig:
                 "dsn": "LIVE",
                 "readonly": True,
                 "timeout": 30,
+                "query_timeout": 60,  # Max seconds per query execution
             },
             "agent": {
                 "port": 8001,
@@ -222,8 +223,13 @@ class AgentConfig:
 
     @property
     def timeout(self) -> int:
-        """Get query timeout"""
+        """Get connection timeout"""
         return self.get("database.timeout", 30)
+
+    @property
+    def query_timeout(self) -> int:
+        """Get query execution timeout (max seconds per query)"""
+        return self.get("database.query_timeout", 60)
 
     @property
     def port(self) -> int:

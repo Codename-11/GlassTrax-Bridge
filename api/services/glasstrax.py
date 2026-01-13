@@ -1337,7 +1337,8 @@ class GlassTraxService:
 
     async def get_fab_orders(
         self,
-        order_date: date,
+        order_date: date | None = None,
+        ship_date: date | None = None,
         page: int = 1,
         page_size: int = 100,
     ) -> tuple[list[dict[str, Any]], int]:
@@ -1347,7 +1348,8 @@ class GlassTraxService:
         Fab orders are identified by internal_comment_1 starting with 'F# '.
 
         Args:
-            order_date: Order date to filter by
+            order_date: Filter by order date (when order was placed)
+            ship_date: Filter by ship date (when order ships)
             page: Page number (1-indexed)
             page_size: Number of items per page
 
@@ -1355,27 +1357,39 @@ class GlassTraxService:
             Tuple of (list of fab order line items, total count)
         """
         if self.is_agent_mode:
-            return await self._get_fab_orders_via_agent(order_date, page, page_size)
+            return await self._get_fab_orders_via_agent(order_date, ship_date, page, page_size)
         else:
-            return self._get_fab_orders_direct(order_date, page, page_size)
+            return self._get_fab_orders_direct(order_date, ship_date, page, page_size)
 
     async def _get_fab_orders_via_agent(
         self,
-        order_date: date,
+        order_date: date | None,
+        ship_date: date | None,
         page: int,
         page_size: int,
     ) -> tuple[list[dict[str, Any]], int]:
         """Get fab orders via agent (agent mode)"""
         from api.services.agent_schemas import FilterCondition, JoinClause, OrderBy
 
-        date_str = format_date_for_query(order_date)
-
         # Build filters for fab orders
         filters: list[FilterCondition] = [
             FilterCondition(column="h.type", operator="=", value="S"),
-            FilterCondition(column="h.order_date", operator="=", value=date_str),
             FilterCondition(column="d.internal_comment_1", operator="LIKE", value="F# %"),
         ]
+
+        # Add date filters
+        if order_date:
+            filters.append(FilterCondition(
+                column="h.order_date",
+                operator="=",
+                value=format_date_for_query(order_date)
+            ))
+        if ship_date:
+            filters.append(FilterCondition(
+                column="h.ship_date",
+                operator="=",
+                value=format_date_for_query(ship_date)
+            ))
 
         # Get total count first
         # Note: Agent doesn't support COUNT with JOINs easily, so we'll get all and count
@@ -1398,6 +1412,8 @@ class GlassTraxService:
                 "d.order_qty",
                 "d.overall_thickness",
                 "h.attached_file",
+                "h.order_date",
+                "h.ship_date",
             ],
             filters=filters,
             joins=[
@@ -1454,6 +1470,10 @@ class GlassTraxService:
             if attached_file and isinstance(attached_file, str):
                 attached_file = attached_file.strip() or None
 
+            # Parse dates from query result
+            order_date_val = parse_glasstrax_date(item.get("order_date"))
+            ship_date_val = parse_glasstrax_date(item.get("ship_date"))
+
             fab_orders.append({
                 "fab_number": fab_number,
                 "so_no": so_no,
@@ -1467,7 +1487,8 @@ class GlassTraxService:
                 "shape_no": item.get("shape_no"),
                 "quantity": item.get("order_qty"),
                 "thickness": item.get("overall_thickness"),
-                "order_date": order_date.isoformat(),
+                "order_date": order_date_val.isoformat() if order_date_val else None,
+                "ship_date": ship_date_val.isoformat() if ship_date_val else None,
                 "attached_file": attached_file,
             })
 
@@ -1497,16 +1518,28 @@ class GlassTraxService:
 
     def _get_fab_orders_direct(
         self,
-        order_date: date,
+        order_date: date | None,
+        ship_date: date | None,
         page: int,
         page_size: int,
     ) -> tuple[list[dict[str, Any]], int]:
         """Get fab orders via direct ODBC (direct mode)"""
         cursor = self._get_cursor()
-        date_str = format_date_for_query(order_date)
+
+        # Build date filter conditions
+        date_conditions = []
+        date_params = []
+        if order_date:
+            date_conditions.append("h.order_date = ?")
+            date_params.append(format_date_for_query(order_date))
+        if ship_date:
+            date_conditions.append("h.ship_date = ?")
+            date_params.append(format_date_for_query(ship_date))
+
+        date_filter = " AND ".join(date_conditions) if date_conditions else "1=1"
 
         # Count query
-        count_query = """
+        count_query = f"""
             SELECT COUNT(*) as total
             FROM sales_order_detail d
             INNER JOIN sales_orders_headers h
@@ -1514,10 +1547,10 @@ class GlassTraxService:
                 AND d.so_no = h.so_no
                 AND d.quotation_no = h.quotation_no
             WHERE h.type = 'S'
-              AND h.order_date = ?
+              AND {date_filter}
               AND LEFT(d.internal_comment_1, 3) = 'F# '
         """
-        cursor.execute(count_query, [date_str])
+        cursor.execute(count_query, date_params)
         total = cursor.fetchone()[0]
 
         # Get paginated fab orders
@@ -1538,7 +1571,9 @@ class GlassTraxService:
                 d.shape_no,
                 d.order_qty,
                 d.overall_thickness,
-                h.attached_file
+                h.attached_file,
+                h.order_date,
+                h.ship_date
             FROM sales_order_detail d
             INNER JOIN sales_orders_headers h
                 ON d.branch_id = h.branch_id
@@ -1547,12 +1582,12 @@ class GlassTraxService:
             INNER JOIN customer c
                 ON h.customer_id = c.customer_id
             WHERE h.type = 'S'
-              AND h.order_date = ?
+              AND {date_filter}
               AND LEFT(d.internal_comment_1, 3) = 'F# '
             ORDER BY h.so_no, d.so_line_no
         """
 
-        cursor.execute(query, [date_str])
+        cursor.execute(query, date_params)
         columns = [col[0].lower() for col in cursor.description]
         rows = cursor.fetchall()
 
@@ -1587,6 +1622,10 @@ class GlassTraxService:
             if attached_file and isinstance(attached_file, str):
                 attached_file = attached_file.strip() or None
 
+            # Parse dates from query result
+            order_date_val = parse_glasstrax_date(item.get("order_date"))
+            ship_date_val = parse_glasstrax_date(item.get("ship_date"))
+
             fab_orders.append({
                 "fab_number": fab_number,
                 "so_no": so_no,
@@ -1600,7 +1639,8 @@ class GlassTraxService:
                 "shape_no": item.get("shape_no"),
                 "quantity": item.get("order_qty"),
                 "thickness": item.get("overall_thickness"),
-                "order_date": order_date.isoformat(),
+                "order_date": order_date_val.isoformat() if order_date_val else None,
+                "ship_date": ship_date_val.isoformat() if ship_date_val else None,
                 "attached_file": attached_file,
             })
 

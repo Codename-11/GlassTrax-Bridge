@@ -261,6 +261,7 @@ class FabOrderResponse(BaseModel):
     quantity: float | None = Field(None, description="Order quantity")
     thickness: float | None = Field(None, description="Glass thickness")
     order_date: str | None = Field(None, description="Order date (ISO format)")
+    ship_date: str | None = Field(None, description="Ship date (ISO format)")
     attached_file: str | None = Field(None, description="Attached file path (PDF/DXF from order header)")
     edgework: str | None = Field(None, description="Edgework summary")
     fab_details: list[ProcessingDetail] | None = Field(

@@ -6,12 +6,16 @@ Builds and executes SQL queries against GlassTrax via ODBC.
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Any
 
 from agent.config import get_config
 from agent.schemas import QueryRequest, QueryResponse
 
 logger = logging.getLogger(__name__)
+
+# Query execution timeout (separate from connection timeout)
+DEFAULT_QUERY_TIMEOUT = 60  # seconds
 
 # Connection recycling settings
 MAX_CONNECTION_AGE = 300  # Recycle connection every 5 minutes
@@ -56,6 +60,8 @@ class QueryService:
         self._conn_created_at: float = 0  # Timestamp when connection was created
         self._consecutive_errors: int = 0  # Track consecutive errors for auto-reconnect
         self._query_count: int = 0  # Total queries executed
+        self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="query_")
+        self._query_timeout = self.config.query_timeout
 
     def _get_connection(self, force_new: bool = False) -> Any:
         """
@@ -304,6 +310,9 @@ class QueryService:
         """
         Execute a query request and return results.
 
+        Runs query in a separate thread with timeout protection to prevent
+        long-running queries from hanging the agent.
+
         Args:
             request: QueryRequest with table, columns, filters, etc.
             _retry: Internal flag - if True, retry once on connection failure
@@ -316,30 +325,25 @@ class QueryService:
         start_time = time.time()
 
         try:
-            # Build and execute query
+            # Build query first (validation happens here)
             sql, params = self._build_query(request)
             logger.info(f"[Query #{query_id}] {request.table} - {sql[:100]}{'...' if len(sql) > 100 else ''}")
 
-            conn = self._get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, params)
-
-            # Get column names
-            columns = [col[0] for col in cursor.description] if cursor.description else []
-
-            # Fetch all rows
-            rows = cursor.fetchall()
-            cursor.close()
-
-            # Convert rows to lists and handle pagination offset
-            result_rows = []
-            offset = request.offset or 0
-
-            for i, row in enumerate(rows):
-                if i < offset:
-                    continue
-                # Convert row to list, handling special types
-                result_rows.append([self._convert_value(v) for v in row])
+            # Execute query in thread with timeout protection
+            future = self._executor.submit(self._execute_sql, sql, params, request.offset or 0)
+            try:
+                columns, result_rows = future.result(timeout=self._query_timeout)
+            except FuturesTimeoutError:
+                elapsed = (time.time() - start_time) * 1000
+                logger.error(f"[Query #{query_id}] TIMEOUT after {elapsed:.0f}ms (limit: {self._query_timeout}s)")
+                # Force connection reset - the query may still be running
+                self._conn = None
+                self._consecutive_errors += 1
+                return QueryResponse(
+                    success=False,
+                    error=f"Query timeout: exceeded {self._query_timeout}s limit. "
+                          f"This may indicate a missing JOIN condition or inefficient query."
+                )
 
             elapsed = (time.time() - start_time) * 1000
             logger.info(f"[Query #{query_id}] Success: {len(result_rows)} rows in {elapsed:.0f}ms")
@@ -388,6 +392,41 @@ class QueryService:
                 # Unexpected errors
                 logger.exception(f"[Query #{query_id}] Unexpected error in {elapsed:.0f}ms: {e}")
                 return QueryResponse(success=False, error=f"Unexpected error: {e!s}")
+
+    def _execute_sql(self, sql: str, params: list[Any], offset: int) -> tuple[list[str], list[list[Any]]]:
+        """
+        Execute SQL query and return results.
+
+        This method runs in a separate thread to allow timeout protection.
+
+        Args:
+            sql: SQL query string
+            params: Query parameters
+            offset: Number of rows to skip (for pagination)
+
+        Returns:
+            Tuple of (column names, result rows)
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(sql, params)
+
+        # Get column names
+        columns = [col[0] for col in cursor.description] if cursor.description else []
+
+        # Fetch all rows
+        rows = cursor.fetchall()
+        cursor.close()
+
+        # Convert rows to lists and handle pagination offset
+        result_rows = []
+        for i, row in enumerate(rows):
+            if i < offset:
+                continue
+            # Convert row to list, handling special types
+            result_rows.append([self._convert_value(v) for v in row])
+
+        return columns, result_rows
 
     def _is_connection_error(self, error_msg: str) -> bool:
         """Check if an error message indicates a connection problem"""
