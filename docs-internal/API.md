@@ -223,6 +223,63 @@ Each detail object contains:
 
 **Use Case:** SilentFAB uses these details to cross-validate detected DXF features against expected fabrication from GlassTrax.
 
+### List Fab Orders
+
+```
+GET /api/v1/orders/fabs?date=2025-01-13
+GET /api/v1/orders/fabs?ship_date=2025-01-20
+```
+
+Returns fab orders (orders with `F# ` prefix in internal_comment_1) for SilentFAB preprocessing.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `date` | date | No* | Filter by order date (YYYY-MM-DD) |
+| `ship_date` | date | No* | Filter by ship date (YYYY-MM-DD) |
+| `page` | int | No | Page number (default: 1) |
+| `page_size` | int | No | Items per page (default: 100, max: 500) |
+
+*At least one of `date` or `ship_date` is required.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "fab_number": "5311",
+      "so_no": 171607,
+      "line_no": 1,
+      "customer_name": "ABC Glass Inc.",
+      "customer_po": "24886-1",
+      "job_name": "Smith Residence",
+      "item_description": "3/8\" CLEAR TEMPERED",
+      "width": 29.5625,
+      "height": 79.6875,
+      "shape_no": 60,
+      "quantity": 1.0,
+      "thickness": 0.375,
+      "order_date": "2025-01-13",
+      "ship_date": "2025-01-20",
+      "attached_file": "F:\\drawings\\2025\\1 2025\\13\\drawing.pdf",
+      "edgework": "Flat Polish",
+      "fab_details": [...],
+      "edge_details": [...]
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 100,
+    "total_items": 45,
+    "total_pages": 1
+  }
+}
+```
+
+**Use Case:** SilentFAB fetches today's fab orders using `?date=YYYY-MM-DD` to display work queue.
+
 ---
 
 ## Admin Endpoints

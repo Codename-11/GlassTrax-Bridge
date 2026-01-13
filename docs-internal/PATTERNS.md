@@ -52,6 +52,51 @@ result = await self.agent_client.query_table(
 
 The agent's `_convert_value()` converts numeric strings to int/float for proper JSON types. This means fields like `customer_id` may arrive as integers even though they're stored as strings.
 
+### pyodbc Thread Safety
+
+**CRITICAL**: pyodbc has `threadsafety=1` meaning threads may share the module but NOT connections.
+
+The agent uses threaded query execution for timeout protection. Each query thread must create its own connection:
+
+```python
+# WRONG - sharing connection across threads causes deadlocks
+def _execute_sql(self, sql, params):
+    conn = self._get_connection()  # Shared connection - BAD!
+    cursor = conn.cursor()
+    cursor.execute(sql, params)
+
+# RIGHT - dedicated connection per thread
+def _execute_sql(self, sql, params):
+    conn = pyodbc.connect(conn_str, timeout=self.config.timeout)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, params)
+        # ... fetch results
+    finally:
+        conn.close()
+```
+
+**Symptoms of thread-safety violation:**
+- Queries timeout even though health check works
+- Simple queries hang indefinitely
+- Agent becomes unresponsive under load
+
+### Query Timeout Configuration
+
+The agent has a configurable query timeout (separate from connection timeout):
+
+```yaml
+# agent_config.yaml
+database:
+  timeout: 30          # Connection timeout (seconds)
+  query_timeout: 60    # Max query execution time (seconds)
+```
+
+When a query exceeds `query_timeout`, it returns an error:
+```json
+{"success": false, "error": "Query timeout: exceeded 60s limit. This may indicate a missing JOIN condition or inefficient query."}
+```
+
 ## Pydantic Schema Patterns
 
 ### CoercedStr for Agent Compatibility
