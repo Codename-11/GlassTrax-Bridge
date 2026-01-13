@@ -1397,8 +1397,8 @@ class GlassTraxService:
                 value=format_date_for_query(ship_date)
             ))
 
-        # Get total count first
-        # Note: Agent doesn't support COUNT with JOINs easily, so we'll get all and count
+        # N+1 pattern: fetch one extra record to detect if more pages exist
+        # This avoids needing a separate COUNT query
         offset = (page - 1) * page_size
 
         result = await self.agent_client.query_table(
@@ -1443,15 +1443,20 @@ class GlassTraxService:
                 OrderBy(column="h.so_no", direction="ASC"),
                 OrderBy(column="d.so_line_no", direction="ASC"),
             ],
-            limit=page_size,
+            limit=page_size + 1,  # Fetch one extra to detect more pages
             offset=offset,
         )
+
+        # Check if there are more records beyond this page
+        has_more = len(result.rows) > page_size
+        # Only process up to page_size records (discard the extra probe record)
+        rows_to_process = result.rows[:page_size]
 
         # Build fab orders list
         fab_orders = []
         so_lines_for_processing: list[tuple[int, int]] = []
 
-        for row in result.rows:
+        for row in rows_to_process:
             item = dict(zip([c.lower() for c in result.columns], row, strict=False))
 
             # Extract fab number from internal_comment_1 (e.g., "F# 1234" -> "1234")
@@ -1512,13 +1517,9 @@ class GlassTraxService:
                 order["edge_details"] = proc.get("edge_details", [])
                 order["edgework"] = proc.get("edgework")
 
-        # Heuristic for total: if we got exactly page_size, assume more pages exist
-        # This ensures has_next=True to trigger pagination in client
-        total = (
-            offset + page_size + 1
-            if len(fab_orders) == page_size
-            else offset + len(fab_orders)
-        )
+        # Calculate total for pagination using N+1 result
+        # If has_more is true, we know there's at least one more record
+        total = offset + len(fab_orders) + (1 if has_more else 0)
 
         return fab_orders, total
 
