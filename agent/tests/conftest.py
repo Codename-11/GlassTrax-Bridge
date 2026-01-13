@@ -18,6 +18,7 @@ def mock_config():
     config.readonly = True
     config.timeout = 30
     config.port = 8001
+    config.test_query = "SELECT 1"
     config.allowed_tables = [
         "customer",
         "customer_contacts",
@@ -26,6 +27,10 @@ def mock_config():
         "sales_order_detail",
     ]
     config.verify_api_key = MagicMock(return_value=True)
+    # Support get() method for accessing nested config values
+    config.get = MagicMock(side_effect=lambda key, default=None: {
+        "agent.test_query": "SELECT 1",
+    }.get(key, default))
     return config
 
 

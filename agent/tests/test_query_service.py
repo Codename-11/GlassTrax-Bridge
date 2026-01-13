@@ -4,7 +4,8 @@ Unit tests for QueryService.
 Tests SQL building, validation, and query execution.
 """
 
-from unittest.mock import patch
+import time
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -334,3 +335,123 @@ class TestExecute:
 
                         assert result.success is False
                         assert "not in agent's allowed_tables" in result.error
+
+
+class TestConnectionRecycling:
+    """Test connection recycling and auto-reconnect."""
+
+    def test_connection_recycle_after_max_age(self, mock_config, mock_pyodbc):
+        """Connection should be recycled after MAX_CONNECTION_AGE."""
+        with patch("agent.config.get_config", return_value=mock_config):
+            with patch("agent.query.PYODBC_AVAILABLE", True):
+                with patch("agent.query.pyodbc", mock_pyodbc):
+                    with patch("agent.query.check_pyodbc_available"):
+                        from agent.query import MAX_CONNECTION_AGE, QueryService
+
+                        service = QueryService()
+                        # Create initial connection
+                        service._get_connection()
+                        assert service._conn is not None
+
+                        # Simulate connection age exceeding MAX_CONNECTION_AGE
+                        service._conn_created_at = time.time() - MAX_CONNECTION_AGE - 10
+
+                        # Getting connection should trigger recycle
+                        service._get_connection()
+                        # A new connection should have been created (mock returns new object)
+                        assert service._conn_created_at > time.time() - 5
+
+    def test_connection_recycle_after_errors(self, mock_config, mock_pyodbc):
+        """Connection should be recycled after MAX_CONSECUTIVE_ERRORS."""
+        with patch("agent.config.get_config", return_value=mock_config):
+            with patch("agent.query.PYODBC_AVAILABLE", True):
+                with patch("agent.query.pyodbc", mock_pyodbc):
+                    with patch("agent.query.check_pyodbc_available"):
+                        from agent.query import MAX_CONSECUTIVE_ERRORS, QueryService
+
+                        service = QueryService()
+                        service._get_connection()
+
+                        # Simulate consecutive errors
+                        service._consecutive_errors = MAX_CONSECUTIVE_ERRORS
+
+                        # Getting connection should trigger recycle
+                        service._get_connection()
+                        # Error count should be reset
+                        assert service._consecutive_errors == 0
+
+    def test_is_connection_error_detection(self, mock_config, mock_pyodbc):
+        """Connection errors should be properly detected."""
+        with patch("agent.config.get_config", return_value=mock_config):
+            with patch("agent.query.PYODBC_AVAILABLE", True):
+                with patch("agent.query.pyodbc", mock_pyodbc):
+                    from agent.query import QueryService
+
+                    service = QueryService()
+
+                    # Should detect connection errors
+                    assert service._is_connection_error("Connection closed")
+                    assert service._is_connection_error("network timeout")
+                    assert service._is_connection_error("Communication link failure")
+
+                    # Should not flag other errors
+                    assert not service._is_connection_error("Invalid syntax")
+                    assert not service._is_connection_error("Table not found")
+
+    def test_query_count_increments(self, mock_config, mock_pyodbc):
+        """Query count should increment with each execution."""
+        with patch("agent.config.get_config", return_value=mock_config):
+            with patch("agent.query.PYODBC_AVAILABLE", True):
+                with patch("agent.query.pyodbc", mock_pyodbc):
+                    with patch("agent.query.check_pyodbc_available"):
+                        from agent.query import QueryService
+
+                        service = QueryService()
+                        service._conn = mock_pyodbc.connect("")
+
+                        assert service._query_count == 0
+
+                        request = QueryRequest(table="customer")
+                        service.execute(request)
+                        assert service._query_count == 1
+
+                        service.execute(request)
+                        assert service._query_count == 2
+
+
+class TestCustomTestQuery:
+    """Test configurable test query for health checks."""
+
+    def test_test_connection_uses_config_query(self, mock_config, mock_pyodbc):
+        """test_connection should use configured test_query."""
+        mock_config.get = MagicMock(side_effect=lambda key, default=None: {
+            "agent.test_query": "SELECT COUNT(*) FROM customer",
+        }.get(key, default))
+
+        with patch("agent.config.get_config", return_value=mock_config):
+            with patch("agent.query.PYODBC_AVAILABLE", True):
+                with patch("agent.query.pyodbc", mock_pyodbc):
+                    with patch("agent.query.check_pyodbc_available"):
+                        from agent.query import QueryService
+
+                        service = QueryService()
+                        service._conn = mock_pyodbc.connect("")
+
+                        # Should succeed (mock cursor executes anything)
+                        result = service.test_connection()
+                        assert result is True
+
+    def test_test_connection_custom_query_parameter(self, mock_config, mock_pyodbc):
+        """test_connection should accept custom query parameter."""
+        with patch("agent.config.get_config", return_value=mock_config):
+            with patch("agent.query.PYODBC_AVAILABLE", True):
+                with patch("agent.query.pyodbc", mock_pyodbc):
+                    with patch("agent.query.check_pyodbc_available"):
+                        from agent.query import QueryService
+
+                        service = QueryService()
+                        service._conn = mock_pyodbc.connect("")
+
+                        # Should succeed with custom query
+                        result = service.test_connection(custom_query="SELECT TOP 1 * FROM orders")
+                        assert result is True

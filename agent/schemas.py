@@ -82,4 +82,5 @@ class HealthResponse(BaseModel):
     pyodbc_installed: bool = Field(..., description="Whether pyodbc is installed")
     database_connected: bool = Field(..., description="Whether database connection is working")
     dsn: str = Field(..., description="Configured DSN name")
+    test_query: str | None = Field(default=None, description="Query used for connection test")
     message: str | None = Field(default=None, description="Additional status message")

@@ -1491,7 +1491,7 @@ class GlassTraxService:
                 order["edgework"] = proc.get("edgework")
 
         # For total count, we'd need another query - for now return len as estimate
-        total = len(fab_orders) + offset if len(fab_orders) == page_size else len(fab_orders) + offset
+        total = len(fab_orders) + offset
 
         return fab_orders, total
 

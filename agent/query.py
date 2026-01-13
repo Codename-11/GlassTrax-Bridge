@@ -5,12 +5,17 @@ Builds and executes SQL queries against GlassTrax via ODBC.
 """
 
 import logging
+import time
 from typing import Any
 
 from agent.config import get_config
 from agent.schemas import QueryRequest, QueryResponse
 
 logger = logging.getLogger(__name__)
+
+# Connection recycling settings
+MAX_CONNECTION_AGE = 300  # Recycle connection every 5 minutes
+MAX_CONSECUTIVE_ERRORS = 3  # Force reconnect after this many errors
 
 # pyodbc is optional - may need manual installation
 try:
@@ -38,19 +43,55 @@ class QueryService:
 
     Builds parameterized SQL from QueryRequest and returns results as QueryResponse.
     Enforces read-only access and table allowlist.
+
+    Features:
+    - Connection recycling: Connections are refreshed after MAX_CONNECTION_AGE seconds
+    - Auto-reconnect: Failed queries trigger connection reset and retry
+    - Request logging: All queries are logged with timing information
     """
 
     def __init__(self):
         self.config = get_config()
         self._conn: Any = None  # pyodbc.Connection or None
+        self._conn_created_at: float = 0  # Timestamp when connection was created
+        self._consecutive_errors: int = 0  # Track consecutive errors for auto-reconnect
+        self._query_count: int = 0  # Total queries executed
 
-    def _get_connection(self) -> Any:
-        """Get or create database connection"""
+    def _get_connection(self, force_new: bool = False) -> Any:
+        """
+        Get or create database connection with automatic recycling.
+
+        Args:
+            force_new: If True, close existing connection and create new one
+
+        Returns:
+            pyodbc connection object
+        """
         check_pyodbc_available()
+
+        # Check if we should recycle the connection
+        should_recycle = False
+        if self._conn is not None:
+            age = time.time() - self._conn_created_at
+            if age > MAX_CONNECTION_AGE:
+                logger.info(f"Recycling connection (age: {age:.0f}s > {MAX_CONNECTION_AGE}s)")
+                should_recycle = True
+            elif self._consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                logger.info(f"Recycling connection ({self._consecutive_errors} consecutive errors)")
+                should_recycle = True
+
+        if force_new or should_recycle:
+            self.close()
+
         if self._conn is None:
             readonly_str = "Yes" if self.config.readonly else "No"
             conn_str = f"DSN={self.config.dsn};ReadOnly={readonly_str}"
+            logger.info(f"Opening database connection to DSN={self.config.dsn}")
             self._conn = pyodbc.connect(conn_str, timeout=self.config.timeout)
+            self._conn_created_at = time.time()
+            self._consecutive_errors = 0
+            logger.info("Database connection established")
+
         return self._conn
 
     def close(self) -> None:
@@ -58,20 +99,35 @@ class QueryService:
         if self._conn:
             try:
                 self._conn.close()
+                logger.debug("Database connection closed")
             except Exception:
                 pass  # Already closed or connection error
             self._conn = None
+            self._conn_created_at = 0
 
-    def test_connection(self) -> bool:
-        """Test if database connection works"""
+    def test_connection(self, custom_query: str | None = None) -> bool:
+        """
+        Test if database connection works.
+
+        Args:
+            custom_query: Optional custom query to run (from config test_query).
+                         Defaults to 'SELECT 1' if not provided.
+
+        Returns:
+            True if connection and query succeed
+        """
+        test_query = custom_query or self.config.get("agent.test_query") or "SELECT 1"
+
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT 1")
+            cursor.execute(test_query)
             cursor.fetchone()
             cursor.close()
+            logger.debug(f"Connection test passed: {test_query}")
             return True
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Connection test failed: {e}")
             self._conn = None
             return False
 
@@ -236,20 +292,25 @@ class QueryService:
 
         return sql, params
 
-    def execute(self, request: QueryRequest) -> QueryResponse:
+    def execute(self, request: QueryRequest, _retry: bool = True) -> QueryResponse:
         """
         Execute a query request and return results.
 
         Args:
             request: QueryRequest with table, columns, filters, etc.
+            _retry: Internal flag - if True, retry once on connection failure
 
         Returns:
             QueryResponse with columns, rows, and status
         """
+        self._query_count += 1
+        query_id = self._query_count
+        start_time = time.time()
+
         try:
             # Build and execute query
             sql, params = self._build_query(request)
-            logger.debug(f"Executing query: {sql} with params: {params}")
+            logger.info(f"[Query #{query_id}] {request.table} - {sql[:100]}{'...' if len(sql) > 100 else ''}")
 
             conn = self._get_connection()
             cursor = conn.cursor()
@@ -272,7 +333,12 @@ class QueryService:
                 # Convert row to list, handling special types
                 result_rows.append([self._convert_value(v) for v in row])
 
-            logger.debug(f"Query returned {len(result_rows)} rows")
+            elapsed = (time.time() - start_time) * 1000
+            logger.info(f"[Query #{query_id}] Success: {len(result_rows)} rows in {elapsed:.0f}ms")
+
+            # Reset consecutive error count on success
+            self._consecutive_errors = 0
+
             return QueryResponse(
                 success=True,
                 columns=columns,
@@ -282,27 +348,52 @@ class QueryService:
 
         except ValueError as e:
             # Validation errors (bad table/column names)
-            logger.warning(f"Query validation error: {e}")
+            elapsed = (time.time() - start_time) * 1000
+            logger.warning(f"[Query #{query_id}] Validation error in {elapsed:.0f}ms: {e}")
             return QueryResponse(success=False, error=str(e))
         except Exception as e:
+            elapsed = (time.time() - start_time) * 1000
+            self._consecutive_errors += 1
+
             # Check if this is a pyodbc error (pyodbc may be None in tests/CI)
             is_pyodbc_error = (
                 pyodbc is not None
                 and hasattr(pyodbc, 'Error')
                 and isinstance(e, pyodbc.Error)
             )
+
             if is_pyodbc_error:
-                # Database errors
+                # Database errors - might be stale connection
                 self._conn = None  # Reset connection on error
                 error_msg = str(e)
                 if hasattr(e, 'args') and len(e.args) > 1:
                     error_msg = e.args[1]
-                logger.error(f"Database error: {error_msg}")
+
+                # Auto-retry once on connection-related errors
+                if _retry and self._is_connection_error(error_msg):
+                    logger.warning(f"[Query #{query_id}] Connection error, retrying: {error_msg}")
+                    return self.execute(request, _retry=False)
+
+                logger.error(f"[Query #{query_id}] Database error in {elapsed:.0f}ms: {error_msg}")
                 return QueryResponse(success=False, error=f"Database error: {error_msg}")
             else:
                 # Unexpected errors
-                logger.exception(f"Unexpected error executing query: {e}")
+                logger.exception(f"[Query #{query_id}] Unexpected error in {elapsed:.0f}ms: {e}")
                 return QueryResponse(success=False, error=f"Unexpected error: {e!s}")
+
+    def _is_connection_error(self, error_msg: str) -> bool:
+        """Check if an error message indicates a connection problem"""
+        connection_keywords = [
+            "connection",
+            "communication link",
+            "network",
+            "timeout",
+            "closed",
+            "disconnected",
+            "broken pipe",
+        ]
+        error_lower = error_msg.lower()
+        return any(kw in error_lower for kw in connection_keywords)
 
     def _convert_value(self, value: Any) -> Any:
         """Convert database values to JSON-serializable types"""

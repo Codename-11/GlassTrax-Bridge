@@ -82,6 +82,7 @@ class AgentConfig:
             "agent": {
                 "port": 8001,
                 "api_key_hash": "",
+                "test_query": "SELECT 1",  # Query to run for health checks
                 "allowed_tables": [
                     "customer",
                     "customer_contacts",
@@ -233,6 +234,11 @@ class AgentConfig:
     def allowed_tables(self) -> list[str]:
         """Get list of allowed table names"""
         return self.get("agent.allowed_tables", [])
+
+    @property
+    def test_query(self) -> str:
+        """Get health check test query"""
+        return self.get("agent.test_query", "SELECT 1")
 
 
 # Global config instance

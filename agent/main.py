@@ -72,8 +72,10 @@ async def health_check() -> HealthResponse:
     Check agent health and database connectivity.
 
     No authentication required - used for monitoring.
+    The test query can be configured in agent_config.yaml (agent.test_query).
     """
     config = get_config()
+    test_query = config.test_query
 
     # Check pyodbc first
     if not PYODBC_AVAILABLE:
@@ -83,10 +85,11 @@ async def health_check() -> HealthResponse:
             pyodbc_installed=False,
             database_connected=False,
             dsn=config.dsn,
+            test_query=test_query,
             message="pyodbc not installed - run: python -m pip install pyodbc",
         )
 
-    # Test database connection
+    # Test database connection using configured test query
     service = get_query_service()
     db_connected = service.test_connection()
 
@@ -96,7 +99,8 @@ async def health_check() -> HealthResponse:
         pyodbc_installed=True,
         database_connected=db_connected,
         dsn=config.dsn,
-        message=None if db_connected else "Database connection failed",
+        test_query=test_query,
+        message=None if db_connected else f"Database connection failed (test query: {test_query})",
     )
 
 
