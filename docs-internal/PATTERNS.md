@@ -124,6 +124,33 @@ for order in orders:
 FilterCondition(column="p.so_no", operator="IN", value=so_nos)
 ```
 
+### N+1 Pagination Pattern
+
+For paginated endpoints where COUNT queries are expensive or unavailable, use the N+1 pattern to detect if more pages exist:
+
+```python
+# Fetch one extra record to detect more pages
+result = await self.agent_client.query_table(
+    ...
+    limit=page_size + 1,  # Request one extra
+    offset=offset,
+)
+
+# Check if we got the extra record
+has_more = len(result.rows) > page_size
+# Return only page_size records (discard probe record)
+rows_to_process = result.rows[:page_size]
+
+# Calculate total for pagination response
+total = offset + len(rows_to_process) + (1 if has_more else 0)
+```
+
+**Why this works:**
+- If we get `page_size + 1` records, we know there's at least one more → `has_next = True`
+- If we get less, this is the last page → `has_next = False`
+- No separate COUNT query needed
+- Only one extra row fetched (minimal overhead)
+
 ## Architecture Philosophy
 
 ### Agent Stability
