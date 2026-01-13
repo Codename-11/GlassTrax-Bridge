@@ -85,16 +85,31 @@ class QueryService:
                 f"Current allowed tables: {allowed}"
             )
 
-    def _validate_identifier(self, name: str) -> str:
+    def _validate_identifier(self, name: str, allow_expressions: bool = False) -> str:
         """
-        Validate and sanitize a SQL identifier (table/column name).
+        Validate and sanitize a SQL identifier or expression.
 
-        Only allows alphanumeric characters and underscores.
+        For simple identifiers (table/column names): only alphanumeric, underscore, dot.
+        For expressions (allow_expressions=True): block SQL injection but allow functions.
+
+        The agent trusts the API Bridge for query construction - this validation
+        is just a safety net against obvious injection attempts.
         """
-        # Remove any quotes
+        # Remove surrounding quotes
         name = name.strip('"\'`[]')
 
-        # Check for valid identifier characters
+        # Block obvious SQL injection attempts (regardless of mode)
+        dangerous = [';', '--', '/*', '*/', 'DROP ', 'DELETE ', 'INSERT ', 'UPDATE ', 'TRUNCATE ']
+        upper = name.upper()
+        for pattern in dangerous:
+            if pattern in upper:
+                raise ValueError(f"Invalid identifier: {name}")
+
+        # For expressions (SELECT columns), allow more flexibility
+        if allow_expressions:
+            return name
+
+        # For strict identifiers (table names, etc.), only allow safe chars
         if not all(c.isalnum() or c in ('_', '.') for c in name):
             raise ValueError(f"Invalid identifier: {name}")
 
@@ -103,8 +118,8 @@ class QueryService:
     def _build_select(self, request: QueryRequest) -> str:
         """Build the SELECT clause"""
         if request.columns:
-            # Validate each column
-            cols = [self._validate_identifier(c) for c in request.columns]
+            # Validate each column (allow expressions like COUNT(*), aliases, etc.)
+            cols = [self._validate_identifier(c, allow_expressions=True) for c in request.columns]
             return f"SELECT {', '.join(cols)}"
         else:
             # Select all from main table

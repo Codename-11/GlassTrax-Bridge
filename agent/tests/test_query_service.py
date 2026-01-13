@@ -64,6 +64,26 @@ class TestValidateIdentifier:
         with pytest.raises(ValueError, match="Invalid identifier"):
             query_service._validate_identifier("customer--comment")
 
+    def test_count_rejected_without_expression_flag(self, query_service):
+        """COUNT(*) should be rejected without allow_expressions."""
+        with pytest.raises(ValueError, match="Invalid identifier"):
+            query_service._validate_identifier("COUNT(*)")
+
+    def test_count_allowed_with_expression_flag(self, query_service):
+        """COUNT(*) should be allowed with allow_expressions=True."""
+        result = query_service._validate_identifier("COUNT(*)", allow_expressions=True)
+        assert result == "COUNT(*)"
+
+    def test_complex_expression_allowed(self, query_service):
+        """Complex expressions should be allowed with allow_expressions=True."""
+        result = query_service._validate_identifier("COALESCE(a, b) AS result", allow_expressions=True)
+        assert result == "COALESCE(a, b) AS result"
+
+    def test_sql_injection_blocked_even_in_expression_mode(self, query_service):
+        """SQL injection should be blocked even with allow_expressions=True."""
+        with pytest.raises(ValueError, match="Invalid identifier"):
+            query_service._validate_identifier("col; DROP TABLE users--", allow_expressions=True)
+
 
 class TestValidateTable:
     """Test table allowlist validation."""
