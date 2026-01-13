@@ -891,6 +891,8 @@ class GlassTraxService:
         """
         from api.services.agent_schemas import FilterCondition, JoinClause, OrderBy
 
+        logger.debug(f"Getting processing info for SO# {so_no}")
+
         # Query so_processing joined with processing_charges
         proc_result = await self.agent_client.query_table(
             table="so_processing",
@@ -918,6 +920,10 @@ class GlassTraxService:
                 OrderBy(column="p.process_index", direction="ASC"),
             ],
         )
+
+        logger.debug(f"Processing query returned {proc_result.row_count} rows, success={proc_result.success}")
+        if proc_result.error:
+            logger.warning(f"Processing query error: {proc_result.error}")
 
         # Build processing info per line with detailed counts
         result: dict[int, dict[str, Any]] = {}
@@ -1506,8 +1512,13 @@ class GlassTraxService:
                 order["edge_details"] = proc.get("edge_details", [])
                 order["edgework"] = proc.get("edgework")
 
-        # For total count, we'd need another query - for now return len as estimate
-        total = len(fab_orders) + offset
+        # Heuristic for total: if we got exactly page_size, assume more pages exist
+        # This ensures has_next=True to trigger pagination in client
+        total = (
+            offset + page_size + 1
+            if len(fab_orders) == page_size
+            else offset + len(fab_orders)
+        )
 
         return fab_orders, total
 

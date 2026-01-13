@@ -97,6 +97,51 @@ When a query exceeds `query_timeout`, it returns an error:
 {"success": false, "error": "Query timeout: exceeded 60s limit. This may indicate a missing JOIN condition or inefficient query."}
 ```
 
+### Batched Queries (N+1 Avoidance)
+
+When fetching related data for multiple records, use batched queries with `IN` clauses instead of N separate queries.
+
+```python
+# WRONG - N+1 pattern: one query per SO (causes timeouts)
+for order in orders:
+    processing = await self._get_processing_info_via_agent(order["so_no"])
+    order["fab_details"] = processing.get("fab_details", [])
+
+# RIGHT - batched: one query for ALL SOs
+so_nos = [order["so_no"] for order in orders]
+all_processing = await self._get_batch_processing_info_via_agent(so_nos)
+for order in orders:
+    proc = all_processing.get(order["so_no"], {}).get(order["line_no"], {})
+    order["fab_details"] = proc.get("fab_details", [])
+```
+
+**Performance impact:**
+- Before (N+1): `27s + (49s × N orders)` = timeout for 5+ orders
+- After (batched): `27s + 49s` = ~20s regardless of order count
+
+**Implementation:** Use `IN` clause with list of IDs:
+```python
+FilterCondition(column="p.so_no", operator="IN", value=so_nos)
+```
+
+## Architecture Philosophy
+
+### Agent Stability
+
+The agent is a **generic SQL query executor** - it should rarely need changes once stable.
+
+**Agent changes only when:**
+- New tables needed → Add to `allowed_tables` in agent_config.yaml
+- New query capabilities → Schema changes (e.g., `additional_conditions` for JOINs)
+- Bug fixes (e.g., thread safety)
+
+**Bridge API is where business logic lives:**
+- New endpoints and data transformations
+- Pagination, filtering, response shaping
+- Business rules and validation
+
+**The agent is intentionally "dumb"** - it executes queries and returns raw data. All intelligence (batching, caching, transformation) belongs in the Bridge API.
+
 ## Pydantic Schema Patterns
 
 ### CoercedStr for Agent Compatibility
