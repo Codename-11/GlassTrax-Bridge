@@ -328,10 +328,14 @@ class AgentTray:
 
     def _exit(self, icon, item) -> None:
         """Exit the application"""
+        self._logger.info("Exit requested, shutting down...")
         if self._state == self.STATE_RUNNING:
             self._stop_agent()
         if icon:
             icon.stop()
+        # Force exit to ensure all threads are terminated
+        import os
+        os._exit(0)
 
     def run(self, auto_start: bool = True) -> None:
         """Run the tray application"""
