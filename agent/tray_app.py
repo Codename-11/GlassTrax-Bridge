@@ -192,6 +192,18 @@ class AgentTray:
         try:
             self._logger.info(f"Starting agent on port {self._config.port}")
 
+            # Check if port is already in use
+            import socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                sock.bind(("0.0.0.0", self._config.port))
+                sock.close()
+            except OSError as e:
+                self._logger.error(f"Port {self._config.port} is already in use: {e}")
+                self._set_state(self.STATE_ERROR)
+                self._notify("Failed to Start Agent", f"Port {self._config.port} is already in use")
+                return
+
             # Configure uvicorn with logging disabled (we handle logging ourselves)
             config = uvicorn.Config(
                 "agent.main:app",
@@ -209,9 +221,20 @@ class AgentTray:
             )
             self._server_thread.start()
 
-            self._set_state(self.STATE_RUNNING)
-            self._logger.info(f"Agent started successfully on port {self._config.port}")
-            self._notify("GlassTrax API Agent Started", f"Listening on port {self._config.port}")
+            # Wait briefly for server to start and verify it's listening
+            import time
+            time.sleep(0.5)
+            if not self._server.started:
+                time.sleep(1.0)  # Give it a bit more time
+
+            if self._server.started:
+                self._set_state(self.STATE_RUNNING)
+                self._logger.info(f"Agent started successfully on port {self._config.port}")
+                self._notify("GlassTrax API Agent Started", f"Listening on port {self._config.port}")
+            else:
+                self._logger.error("Agent failed to start - server not listening")
+                self._set_state(self.STATE_ERROR)
+                self._notify("Failed to Start Agent", "Server failed to bind")
 
         except Exception as e:
             self._logger.exception("Failed to start agent")
@@ -246,7 +269,10 @@ class AgentTray:
 
     def _set_state(self, state: str) -> None:
         """Update icon state and refresh menu"""
+        old_state = self._state
         self._state = state
+        if old_state != state:
+            self._logger.info(f"Agent state: {old_state} -> {state}")
         if self._icon:
             self._icon.icon = self._icons[state]
             self._icon.update_menu()
