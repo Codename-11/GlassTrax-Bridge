@@ -114,6 +114,7 @@ agent:
 - When `agent.enabled=true`, API queries Windows agent via HTTP
 - Agent keys use `gta_` prefix (vs `gtb_` for main API)
 - **JOIN queries require explicit column lists** - see `docs-internal/PATTERNS.md`
+- **CRITICAL: Keep schemas in sync** - `agent/schemas.py` and `api/services/agent_schemas.py` must match!
 
 ### Pydantic Schemas
 - Use `CoercedStr` type for fields that may arrive as int from agent

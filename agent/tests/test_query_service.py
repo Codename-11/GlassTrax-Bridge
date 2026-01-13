@@ -256,6 +256,29 @@ class TestBuildQuery:
         assert "LEFT JOIN delivery_routes r" in sql
         assert "ON c.route_id = r.route_id" in sql
 
+    def test_select_with_join_additional_conditions(self, query_service):
+        """Build SELECT with JOIN including additional_conditions."""
+        request = QueryRequest(
+            table="sales_order_detail",
+            alias="d",
+            columns=["d.so_no", "h.customer_id"],
+            joins=[
+                JoinClause(
+                    table="sales_orders_headers",
+                    alias="h",
+                    join_type="INNER",
+                    on_left="d.so_no",
+                    on_right="h.so_no",
+                    additional_conditions="d.branch_id = h.branch_id AND d.quotation_no = h.quotation_no",
+                ),
+            ],
+        )
+        sql, params = query_service._build_query(request)
+
+        assert "INNER JOIN sales_orders_headers h" in sql
+        assert "ON d.so_no = h.so_no" in sql
+        assert "AND d.branch_id = h.branch_id AND d.quotation_no = h.quotation_no" in sql
+
 
 class TestConvertValue:
     """Test value conversion for JSON serialization."""

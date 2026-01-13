@@ -34,6 +34,10 @@ class JoinClause(BaseModel):
     join_type: Literal["INNER", "LEFT", "RIGHT"] = Field(default="LEFT", description="Join type")
     on_left: str = Field(..., description="Left side of ON condition (e.g., 'c.route_id')")
     on_right: str = Field(..., description="Right side of ON condition (e.g., 'r.route_id')")
+    additional_conditions: str | None = Field(
+        default=None,
+        description="Additional ON conditions (e.g., 'a.branch_id = b.branch_id')"
+    )
 
 
 class QueryRequest(BaseModel):

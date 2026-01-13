@@ -4,6 +4,22 @@ Technical patterns and conventions for GlassTrax-Bridge development.
 
 ## Agent Mode Patterns
 
+### CRITICAL: Keep Agent Schemas in Sync
+
+The agent has its own copy of schemas (`agent/schemas.py`) that **must match** the API's copy (`api/services/agent_schemas.py`). If you add a field to one, add it to both!
+
+**Files that must stay synchronized:**
+- `agent/schemas.py` - Agent's schemas (what it accepts)
+- `api/services/agent_schemas.py` - API's schemas (what it sends)
+
+**Example bug**: Adding `additional_conditions` to `JoinClause` in glasstrax.py but not updating the agent's schema causes:
+1. The field is silently dropped when serialized
+2. JOINs become cartesian products (missing conditions)
+3. Database hangs trying to process millions of rows
+4. Agent appears unresponsive
+
+**Rule**: When modifying any schema field used for agent communication, update BOTH files and test with an actual agent.
+
 ### JOIN Queries Require Explicit Columns
 
 When querying via agent mode with JOINs, you **must** explicitly list columns. Using `columns=None` only selects from the main table alias.

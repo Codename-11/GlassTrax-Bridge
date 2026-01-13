@@ -25,6 +25,8 @@ def mock_config():
         "delivery_routes",
         "sales_orders_headers",
         "sales_order_detail",
+        "so_processing",
+        "processing_charges",
     ]
     config.verify_api_key = MagicMock(return_value=True)
     # Support get() method for accessing nested config values

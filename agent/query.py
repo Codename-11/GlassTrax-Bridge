@@ -212,6 +212,14 @@ class QueryService:
                 join_str += f" {alias}"
             join_str += f" ON {on_left} = {on_right}"
 
+            # Add additional ON conditions if specified
+            if join.additional_conditions:
+                # Validate for SQL injection but allow complex expressions
+                additional = self._validate_identifier(
+                    join.additional_conditions, allow_expressions=True
+                )
+                join_str += f" AND {additional}"
+
             join_parts.append(join_str)
 
         return " ".join(join_parts), []
