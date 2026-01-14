@@ -904,7 +904,7 @@ class GlassTraxService:
             ],
             filters=[
                 FilterCondition(column="p.so_no", operator="=", value=so_no),
-                FilterCondition(column="pc.process_group", operator="IN", value=["FAB", "EDGE"]),
+                FilterCondition(column="pc.process_group", operator="IN", value=["FAB", "EDGE", "SHAPE"]),
             ],
             joins=[
                 JoinClause(
@@ -954,12 +954,14 @@ class GlassTraxService:
                 else:
                     result[line_no]["fab_details"][description] = 1
 
-            elif process_group == "EDGE" and description:
-                # Count edge operations by description
+            elif process_group in ("EDGE", "SHAPE") and description:
+                # EDGE and SHAPE (CNC polish operations) go to edge_details
+                # Store as tuple (count, group) to preserve original group
                 if description in result[line_no]["edge_details"]:
-                    result[line_no]["edge_details"][description] += 1
+                    count, _ = result[line_no]["edge_details"][description]
+                    result[line_no]["edge_details"][description] = (count + 1, process_group)
                 else:
-                    result[line_no]["edge_details"][description] = 1
+                    result[line_no]["edge_details"][description] = (1, process_group)
 
                 # Also build edgework string (for backwards compatibility)
                 existing = result[line_no]["edgework"]
@@ -978,8 +980,8 @@ class GlassTraxService:
                 for desc, count in fab_dict.items()
             ]
             result[line_no]["edge_details"] = [
-                {"description": desc, "count": count, "process_group": "EDGE"}
-                for desc, count in edge_dict.items()
+                {"description": desc, "count": count, "process_group": group}
+                for desc, (count, group) in edge_dict.items()
             ]
 
         return result
@@ -1087,7 +1089,7 @@ class GlassTraxService:
             FROM so_processing p
             JOIN processing_charges pc ON p.process_id = pc.processing_id
             WHERE p.so_no = ?
-              AND pc.process_group IN ('FAB', 'EDGE')
+              AND pc.process_group IN ('FAB', 'EDGE', 'SHAPE')
             ORDER BY p.so_line_no, p.process_index
         """
 
@@ -1119,12 +1121,14 @@ class GlassTraxService:
                 else:
                     result[line_no]["fab_details"][description] = 1
 
-            elif process_group == "EDGE" and description:
-                # Count edge operations by description
+            elif process_group in ("EDGE", "SHAPE") and description:
+                # EDGE and SHAPE (CNC polish operations) go to edge_details
+                # Store as tuple (count, group) to preserve original group
                 if description in result[line_no]["edge_details"]:
-                    result[line_no]["edge_details"][description] += 1
+                    count, _ = result[line_no]["edge_details"][description]
+                    result[line_no]["edge_details"][description] = (count + 1, process_group)
                 else:
-                    result[line_no]["edge_details"][description] = 1
+                    result[line_no]["edge_details"][description] = (1, process_group)
 
                 # Also build edgework string (for backwards compatibility)
                 existing = result[line_no]["edgework"]
@@ -1143,8 +1147,8 @@ class GlassTraxService:
                 for desc, count in fab_dict.items()
             ]
             result[line_no]["edge_details"] = [
-                {"description": desc, "count": count, "process_group": "EDGE"}
-                for desc, count in edge_dict.items()
+                {"description": desc, "count": count, "process_group": group}
+                for desc, (count, group) in edge_dict.items()
             ]
 
         return result
@@ -1549,7 +1553,7 @@ class GlassTraxService:
             ],
             filters=[
                 FilterCondition(column="p.so_no", operator="IN", value=so_nos),
-                FilterCondition(column="pc.process_group", operator="IN", value=["FAB", "EDGE"]),
+                FilterCondition(column="pc.process_group", operator="IN", value=["FAB", "EDGE", "SHAPE"]),
             ],
             joins=[
                 JoinClause(
@@ -1601,7 +1605,8 @@ class GlassTraxService:
                         "count": 1,
                         "process_group": "FAB",
                     })
-            elif group == "EDGE":
+            elif group in ("EDGE", "SHAPE"):
+                # EDGE and SHAPE (CNC polish operations) go to edge_details
                 # First edge entry becomes edgework summary
                 if line_info["edgework"] is None:
                     line_info["edgework"] = desc
@@ -1613,7 +1618,7 @@ class GlassTraxService:
                     line_info["edge_details"].append({
                         "description": desc,
                         "count": 1,
-                        "process_group": "EDGE",
+                        "process_group": group,  # Keep original group for reference
                     })
 
         return result
@@ -1786,7 +1791,7 @@ class GlassTraxService:
             FROM so_processing p
             JOIN processing_charges pc ON p.process_id = pc.processing_id
             WHERE p.so_no IN ({placeholders})
-              AND pc.process_group IN ('FAB', 'EDGE')
+              AND pc.process_group IN ('FAB', 'EDGE', 'SHAPE')
             ORDER BY p.so_no, p.so_line_no, p.process_index
         """
 
@@ -1824,7 +1829,8 @@ class GlassTraxService:
                         "count": 1,
                         "process_group": "FAB",
                     })
-            elif group == "EDGE":
+            elif group in ("EDGE", "SHAPE"):
+                # EDGE and SHAPE (CNC polish operations) go to edge_details
                 if line_info["edgework"] is None:
                     line_info["edgework"] = desc
                 existing = next((d for d in line_info["edge_details"] if d["description"] == desc), None)
@@ -1834,7 +1840,7 @@ class GlassTraxService:
                     line_info["edge_details"].append({
                         "description": desc,
                         "count": 1,
-                        "process_group": "EDGE",
+                        "process_group": group,  # Keep original group for reference
                     })
 
         return result
