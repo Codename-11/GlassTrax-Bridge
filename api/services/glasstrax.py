@@ -894,6 +894,7 @@ class GlassTraxService:
         logger.debug(f"Getting processing info for SO# {so_no}")
 
         # Query so_processing joined with processing_charges
+        # Include number_of_cuts for accurate quantity counts
         proc_result = await self.agent_client.query_table(
             table="so_processing",
             alias="p",
@@ -901,6 +902,7 @@ class GlassTraxService:
                 "p.so_line_no",
                 "pc.process_group",
                 "pc.description",
+                "p.number_of_cuts",
             ],
             filters=[
                 FilterCondition(column="p.so_no", operator="=", value=so_no),
@@ -937,6 +939,9 @@ class GlassTraxService:
             description = row_dict.get("description")
             if description and isinstance(description, str):
                 description = description.strip()
+            # Get quantity from number_of_cuts, default to 1
+            qty_val = row_dict.get("number_of_cuts")
+            qty = int(float(qty_val)) if qty_val else 1
 
             if line_no not in result:
                 result[line_no] = {
@@ -948,20 +953,20 @@ class GlassTraxService:
 
             if process_group == "FAB" and description:
                 result[line_no]["has_fab"] = True
-                # Count fab operations by description
+                # Count fab operations by description using qty
                 if description in result[line_no]["fab_details"]:
-                    result[line_no]["fab_details"][description] += 1
+                    result[line_no]["fab_details"][description] += qty
                 else:
-                    result[line_no]["fab_details"][description] = 1
+                    result[line_no]["fab_details"][description] = qty
 
             elif process_group in ("EDGE", "SHAPE") and description:
                 # EDGE and SHAPE (CNC polish operations) go to edge_details
                 # Store as tuple (count, group) to preserve original group
                 if description in result[line_no]["edge_details"]:
                     count, _ = result[line_no]["edge_details"][description]
-                    result[line_no]["edge_details"][description] = (count + 1, process_group)
+                    result[line_no]["edge_details"][description] = (count + qty, process_group)
                 else:
-                    result[line_no]["edge_details"][description] = (1, process_group)
+                    result[line_no]["edge_details"][description] = (qty, process_group)
 
                 # Also build edgework string (for backwards compatibility)
                 existing = result[line_no]["edgework"]
@@ -1081,11 +1086,13 @@ class GlassTraxService:
             }
         """
         # Query for FAB and EDGE processing per line
+        # Include number_of_cuts column (defaults to 1 if null) for accurate counts
         processing_query = """
             SELECT
                 p.so_line_no,
                 pc.process_group,
-                pc.description
+                pc.description,
+                COALESCE(p.number_of_cuts, 1) as qty
             FROM so_processing p
             JOIN processing_charges pc ON p.process_id = pc.processing_id
             WHERE p.so_no = ?
@@ -1104,6 +1111,7 @@ class GlassTraxService:
             line_no = int(row[0])
             process_group = row[1].strip() if row[1] else None
             description = row[2].strip() if row[2] else None
+            qty = int(row[3]) if row[3] else 1  # Use qty column, default to 1
 
             if line_no not in result:
                 result[line_no] = {
@@ -1115,20 +1123,20 @@ class GlassTraxService:
 
             if process_group == "FAB" and description:
                 result[line_no]["has_fab"] = True
-                # Count fab operations by description
+                # Aggregate fab operations by description using qty
                 if description in result[line_no]["fab_details"]:
-                    result[line_no]["fab_details"][description] += 1
+                    result[line_no]["fab_details"][description] += qty
                 else:
-                    result[line_no]["fab_details"][description] = 1
+                    result[line_no]["fab_details"][description] = qty
 
             elif process_group in ("EDGE", "SHAPE") and description:
                 # EDGE and SHAPE (CNC polish operations) go to edge_details
                 # Store as tuple (count, group) to preserve original group
                 if description in result[line_no]["edge_details"]:
                     count, _ = result[line_no]["edge_details"][description]
-                    result[line_no]["edge_details"][description] = (count + 1, process_group)
+                    result[line_no]["edge_details"][description] = (count + qty, process_group)
                 else:
-                    result[line_no]["edge_details"][description] = (1, process_group)
+                    result[line_no]["edge_details"][description] = (qty, process_group)
 
                 # Also build edgework string (for backwards compatibility)
                 existing = result[line_no]["edgework"]
@@ -1542,6 +1550,7 @@ class GlassTraxService:
             return {}
 
         # Query so_processing for ALL SOs at once using IN clause
+        # Include number_of_cuts for accurate quantity counts
         proc_result = await self.agent_client.query_table(
             table="so_processing",
             alias="p",
@@ -1550,6 +1559,7 @@ class GlassTraxService:
                 "p.so_line_no",
                 "pc.process_group",
                 "pc.description",
+                "p.number_of_cuts",
             ],
             filters=[
                 FilterCondition(column="p.so_no", operator="IN", value=so_nos),
@@ -1580,6 +1590,9 @@ class GlassTraxService:
             line_no = item.get("so_line_no")
             group = item.get("process_group", "").strip() if item.get("process_group") else ""
             desc = item.get("description", "").strip() if item.get("description") else ""
+            # Get quantity from number_of_cuts, default to 1
+            qty_val = item.get("number_of_cuts")
+            qty = int(float(qty_val)) if qty_val else 1
 
             if so_no not in result:
                 result[so_no] = {}
@@ -1595,14 +1608,14 @@ class GlassTraxService:
 
             if group == "FAB":
                 line_info["has_fab"] = True
-                # Add to fab_details, aggregating counts
+                # Add to fab_details, aggregating counts using qty
                 existing = next((d for d in line_info["fab_details"] if d["description"] == desc), None)
                 if existing:
-                    existing["count"] += 1
+                    existing["count"] += qty
                 else:
                     line_info["fab_details"].append({
                         "description": desc,
-                        "count": 1,
+                        "count": qty,
                         "process_group": "FAB",
                     })
             elif group in ("EDGE", "SHAPE"):
@@ -1610,14 +1623,14 @@ class GlassTraxService:
                 # First edge entry becomes edgework summary
                 if line_info["edgework"] is None:
                     line_info["edgework"] = desc
-                # Add to edge_details
+                # Add to edge_details using qty
                 existing = next((d for d in line_info["edge_details"] if d["description"] == desc), None)
                 if existing:
-                    existing["count"] += 1
+                    existing["count"] += qty
                 else:
                     line_info["edge_details"].append({
                         "description": desc,
-                        "count": 1,
+                        "count": qty,
                         "process_group": group,  # Keep original group for reference
                     })
 
@@ -1782,12 +1795,14 @@ class GlassTraxService:
         # Build IN clause with placeholders
         placeholders = ",".join("?" * len(so_nos))
 
+        # Include number_of_cuts for accurate quantity counts
         query = f"""
             SELECT
                 p.so_no,
                 p.so_line_no,
                 pc.process_group,
-                pc.description
+                pc.description,
+                COALESCE(p.number_of_cuts, 1) as qty
             FROM so_processing p
             JOIN processing_charges pc ON p.process_id = pc.processing_id
             WHERE p.so_no IN ({placeholders})
@@ -1802,9 +1817,10 @@ class GlassTraxService:
         result: dict[int, dict[int, dict[str, Any]]] = {}
 
         for row in rows:
-            so_no, line_no, group, desc = row
+            so_no, line_no, group, desc, qty_val = row
             group = group.strip() if group else ""
             desc = desc.strip() if desc else ""
+            qty = int(float(qty_val)) if qty_val else 1
 
             if so_no not in result:
                 result[so_no] = {}
@@ -1822,11 +1838,11 @@ class GlassTraxService:
                 line_info["has_fab"] = True
                 existing = next((d for d in line_info["fab_details"] if d["description"] == desc), None)
                 if existing:
-                    existing["count"] += 1
+                    existing["count"] += qty
                 else:
                     line_info["fab_details"].append({
                         "description": desc,
-                        "count": 1,
+                        "count": qty,
                         "process_group": "FAB",
                     })
             elif group in ("EDGE", "SHAPE"):
@@ -1835,11 +1851,11 @@ class GlassTraxService:
                     line_info["edgework"] = desc
                 existing = next((d for d in line_info["edge_details"] if d["description"] == desc), None)
                 if existing:
-                    existing["count"] += 1
+                    existing["count"] += qty
                 else:
                     line_info["edge_details"].append({
                         "description": desc,
-                        "count": 1,
+                        "count": qty,
                         "process_group": group,  # Keep original group for reference
                     })
 

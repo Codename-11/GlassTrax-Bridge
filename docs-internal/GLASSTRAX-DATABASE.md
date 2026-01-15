@@ -156,7 +156,9 @@ Links order lines to their processing operations (fab, edge, temper, etc.).
 | `so_line_no` | NUMERIC(3) | FK to sales_order_detail |
 | `process_index` | NUMERIC(3) | Processing sequence |
 | `process_id` | CHAR(5) | FK to processing_charges |
+| `number_of_cuts` | NUMERIC(10) | **Quantity** of this operation (e.g., 2 holes, 4 notches) |
 | `processing_charge` | NUMERIC(8) | Charge amount |
+| `size_1` - `size_4` | NUMERIC(10) | Dimension parameters for the operation |
 | `notes_1` - `notes_10` | CHAR(80) | Processing notes |
 
 **Table**: `processing_charges` (345 rows, 48 columns)
@@ -299,12 +301,15 @@ WHERE d.so_no = 123456
 ### Get processing operations for an order line
 ```sql
 SELECT p.so_no, p.so_line_no, p.process_id,
-       pc.process_group, pc.description
+       pc.process_group, pc.description,
+       COALESCE(p.number_of_cuts, 1) as qty
 FROM so_processing p
 JOIN processing_charges pc ON p.process_id = pc.processing_id
 WHERE p.so_no = 123456 AND p.so_line_no = 1
 ORDER BY p.process_index
 ```
+
+> **Note**: The `number_of_cuts` column stores the quantity for each operation (e.g., 2 holes, 4 notches). Always use `COALESCE(p.number_of_cuts, 1)` to default to 1 if null.
 
 ### Get edgework for an order line
 ```sql
