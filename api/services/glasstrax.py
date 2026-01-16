@@ -906,7 +906,8 @@ class GlassTraxService:
             ],
             filters=[
                 FilterCondition(column="p.so_no", operator="=", value=so_no),
-                FilterCondition(column="pc.process_group", operator="IN", value=["FAB", "EDGE", "SHAPE"]),
+                # Note: We removed process_group filter to catch processes with empty group
+                # like "Shape Seamed". Classification is handled in Python code below.
             ],
             joins=[
                 JoinClause(
@@ -951,7 +952,16 @@ class GlassTraxService:
                     "edge_details": {},  # description -> count
                 }
 
-            if process_group == "FAB" and description:
+            # Determine effective process group, handling empty/unassigned groups
+            effective_group = process_group
+            if not process_group and description:
+                # Infer group from description for unassigned processes
+                desc_lower = description.lower()
+                if "seam" in desc_lower or "polish" in desc_lower or "bevel" in desc_lower:
+                    effective_group = "EDGE"
+                # Leave others as empty (will be skipped)
+
+            if effective_group == "FAB" and description:
                 result[line_no]["has_fab"] = True
                 # Count fab operations by description using qty
                 if description in result[line_no]["fab_details"]:
@@ -959,14 +969,14 @@ class GlassTraxService:
                 else:
                     result[line_no]["fab_details"][description] = qty
 
-            elif process_group in ("EDGE", "SHAPE") and description:
+            elif effective_group in ("EDGE", "SHAPE") and description:
                 # EDGE and SHAPE (CNC polish operations) go to edge_details
-                # Store as tuple (count, group) to preserve original group
+                # Store as tuple (count, group) using effective_group for inferred processes
                 if description in result[line_no]["edge_details"]:
                     count, _ = result[line_no]["edge_details"][description]
-                    result[line_no]["edge_details"][description] = (count + qty, process_group)
+                    result[line_no]["edge_details"][description] = (count + qty, effective_group)
                 else:
-                    result[line_no]["edge_details"][description] = (qty, process_group)
+                    result[line_no]["edge_details"][description] = (qty, effective_group)
 
                 # Also build edgework string (for backwards compatibility)
                 existing = result[line_no]["edgework"]
@@ -1085,7 +1095,9 @@ class GlassTraxService:
                 edge_details: list[{description, count, process_group}]
             }
         """
-        # Query for FAB and EDGE processing per line
+        # Query for FAB, EDGE, SHAPE processing per line
+        # Include empty process_group to catch processes like "Shape Seamed"
+        # Use TRIM() to handle space-padded CHAR fields in Pervasive SQL
         # Include number_of_cuts column (defaults to 1 if null) for accurate counts
         processing_query = """
             SELECT
@@ -1096,7 +1108,7 @@ class GlassTraxService:
             FROM so_processing p
             JOIN processing_charges pc ON p.process_id = pc.processing_id
             WHERE p.so_no = ?
-              AND pc.process_group IN ('FAB', 'EDGE', 'SHAPE')
+              AND (TRIM(pc.process_group) IN ('FAB', 'EDGE', 'SHAPE', 'CUT', 'TEMP', ''))
             ORDER BY p.so_line_no, p.process_index
         """
 
@@ -1109,7 +1121,7 @@ class GlassTraxService:
         # First pass: collect all operations
         for row in rows:
             line_no = int(row[0])
-            process_group = row[1].strip() if row[1] else None
+            process_group = row[1].strip() if row[1] else ""
             description = row[2].strip() if row[2] else None
             qty = int(row[3]) if row[3] else 1  # Use qty column, default to 1
 
@@ -1121,7 +1133,16 @@ class GlassTraxService:
                     "edge_details": {},  # description -> count
                 }
 
-            if process_group == "FAB" and description:
+            # Determine effective process group, handling empty/unassigned groups
+            effective_group = process_group
+            if not process_group and description:
+                # Infer group from description for unassigned processes
+                desc_lower = description.lower()
+                if "seam" in desc_lower or "polish" in desc_lower or "bevel" in desc_lower:
+                    effective_group = "EDGE"
+                # Leave others as empty (will be skipped)
+
+            if effective_group == "FAB" and description:
                 result[line_no]["has_fab"] = True
                 # Aggregate fab operations by description using qty
                 if description in result[line_no]["fab_details"]:
@@ -1129,14 +1150,14 @@ class GlassTraxService:
                 else:
                     result[line_no]["fab_details"][description] = qty
 
-            elif process_group in ("EDGE", "SHAPE") and description:
+            elif effective_group in ("EDGE", "SHAPE") and description:
                 # EDGE and SHAPE (CNC polish operations) go to edge_details
-                # Store as tuple (count, group) to preserve original group
+                # Store as tuple (count, group) using effective_group for inferred processes
                 if description in result[line_no]["edge_details"]:
                     count, _ = result[line_no]["edge_details"][description]
-                    result[line_no]["edge_details"][description] = (count + qty, process_group)
+                    result[line_no]["edge_details"][description] = (count + qty, effective_group)
                 else:
-                    result[line_no]["edge_details"][description] = (qty, process_group)
+                    result[line_no]["edge_details"][description] = (qty, effective_group)
 
                 # Also build edgework string (for backwards compatibility)
                 existing = result[line_no]["edgework"]
@@ -1563,7 +1584,8 @@ class GlassTraxService:
             ],
             filters=[
                 FilterCondition(column="p.so_no", operator="IN", value=so_nos),
-                FilterCondition(column="pc.process_group", operator="IN", value=["FAB", "EDGE", "SHAPE"]),
+                # Note: We removed process_group filter to catch processes with empty group
+                # like "Shape Seamed". Classification is handled in Python code below.
             ],
             joins=[
                 JoinClause(
@@ -1606,7 +1628,16 @@ class GlassTraxService:
 
             line_info = result[so_no][line_no]
 
-            if group == "FAB":
+            # Determine effective process group, handling empty/unassigned groups
+            effective_group = group
+            if not group and desc:
+                # Infer group from description for unassigned processes
+                desc_lower = desc.lower()
+                if "seam" in desc_lower or "polish" in desc_lower or "bevel" in desc_lower:
+                    effective_group = "EDGE"
+                # Leave others as empty (will be skipped)
+
+            if effective_group == "FAB":
                 line_info["has_fab"] = True
                 # Add to fab_details, aggregating counts using qty
                 existing = next((d for d in line_info["fab_details"] if d["description"] == desc), None)
@@ -1618,7 +1649,7 @@ class GlassTraxService:
                         "count": qty,
                         "process_group": "FAB",
                     })
-            elif group in ("EDGE", "SHAPE"):
+            elif effective_group in ("EDGE", "SHAPE"):
                 # EDGE and SHAPE (CNC polish operations) go to edge_details
                 # First edge entry becomes edgework summary
                 if line_info["edgework"] is None:
@@ -1796,6 +1827,8 @@ class GlassTraxService:
         placeholders = ",".join("?" * len(so_nos))
 
         # Include number_of_cuts for accurate quantity counts
+        # Include empty process_group to catch processes like "Shape Seamed"
+        # Use TRIM() to handle space-padded CHAR fields in Pervasive SQL
         query = f"""
             SELECT
                 p.so_no,
@@ -1806,7 +1839,7 @@ class GlassTraxService:
             FROM so_processing p
             JOIN processing_charges pc ON p.process_id = pc.processing_id
             WHERE p.so_no IN ({placeholders})
-              AND pc.process_group IN ('FAB', 'EDGE', 'SHAPE')
+              AND (TRIM(pc.process_group) IN ('FAB', 'EDGE', 'SHAPE', 'CUT', 'TEMP', ''))
             ORDER BY p.so_no, p.so_line_no, p.process_index
         """
 
@@ -1834,7 +1867,16 @@ class GlassTraxService:
 
             line_info = result[so_no][line_no]
 
-            if group == "FAB":
+            # Determine effective process group, handling empty/unassigned groups
+            effective_group = group
+            if not group and desc:
+                # Infer group from description for unassigned processes
+                desc_lower = desc.lower()
+                if "seam" in desc_lower or "polish" in desc_lower or "bevel" in desc_lower:
+                    effective_group = "EDGE"
+                # Leave others as empty (will be skipped)
+
+            if effective_group == "FAB":
                 line_info["has_fab"] = True
                 existing = next((d for d in line_info["fab_details"] if d["description"] == desc), None)
                 if existing:
@@ -1845,7 +1887,7 @@ class GlassTraxService:
                         "count": qty,
                         "process_group": "FAB",
                     })
-            elif group in ("EDGE", "SHAPE"):
+            elif effective_group in ("EDGE", "SHAPE"):
                 # EDGE and SHAPE (CNC polish operations) go to edge_details
                 if line_info["edgework"] is None:
                     line_info["edgework"] = desc
@@ -1856,7 +1898,7 @@ class GlassTraxService:
                     line_info["edge_details"].append({
                         "description": desc,
                         "count": qty,
-                        "process_group": group,  # Keep original group for reference
+                        "process_group": effective_group,  # Use effective group (EDGE for inferred)
                     })
 
         return result
