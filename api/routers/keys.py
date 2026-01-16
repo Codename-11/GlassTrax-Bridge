@@ -1322,6 +1322,7 @@ class TestAgentResponse(BaseModel):
     message: str
     agent_version: str | None = None
     database_connected: bool | None = None
+    authenticated: bool | None = None  # True if API key is valid
 
 
 @router.post(
@@ -1339,30 +1340,67 @@ async def test_agent(
     Test connection to a GlassTrax API Agent.
 
     Attempts to connect to the specified agent URL and verify:
-    - Agent is reachable
-    - API key is valid
+    - Agent is reachable (via /health endpoint - no auth required)
+    - API key is valid (via authenticated query)
     - Agent can connect to GlassTrax database
     """
-    from api.services.agent_client import AgentAuthError, AgentClient, AgentConnectionError
+    from api.services.agent_client import (
+        AgentAuthError,
+        AgentClient,
+        AgentConnectionError,
+        AgentQueryError,
+    )
+    from api.services.agent_schemas import QueryRequest
 
     try:
         # Create temporary client for testing
         client = AgentClient(url=data.url, api_key=data.api_key, timeout=data.timeout)
 
         try:
-            # Test health endpoint
+            # Step 1: Test health endpoint (no auth required)
             health = await client.health_check()
 
             agent_version = health.get("version", "unknown")
             database_connected = health.get("database_connected", False)
             status = health.get("status", "unknown")
 
-            if status == "healthy":
-                message = "Connected successfully! Agent is healthy and database is accessible."
+            # Step 2: Test authentication by making an actual query
+            # The /health endpoint doesn't require auth, so we need to test /query
+            authenticated = False
+            auth_message = ""
+
+            try:
+                # Simple count query to verify auth works
+                test_query = QueryRequest(
+                    table="customer",
+                    columns=["COUNT(*)"],
+                    limit=1,
+                )
+                result = await client.query(test_query)
+                if result.success:
+                    authenticated = True
+                    auth_message = "API key verified."
+                else:
+                    auth_message = f"Query failed: {result.error or 'unknown error'}"
+            except AgentAuthError:
+                authenticated = False
+                auth_message = "API key is invalid."
+            except AgentQueryError as e:
+                # Query error but auth worked
+                authenticated = True
+                auth_message = f"Authenticated, but query error: {e!s}"
+            except Exception as e:
+                auth_message = f"Auth test error: {e!s}"
+
+            # Build final message
+            if status == "healthy" and authenticated:
+                message = f"Connected and authenticated! Agent is healthy. {auth_message}"
+            elif status == "healthy" and not authenticated:
+                message = f"Agent reachable but authentication failed. {auth_message}"
             elif database_connected:
-                message = f"Connected to agent (status: {status}), database is accessible."
+                message = f"Connected to agent (status: {status}), database accessible. {auth_message}"
             else:
-                message = f"Connected to agent (status: {status}), but database is not accessible."
+                message = f"Connected to agent (status: {status}), database not accessible. {auth_message}"
 
             return APIResponse(
                 success=True,
@@ -1372,6 +1410,7 @@ async def test_agent(
                     message=message,
                     agent_version=agent_version,
                     database_connected=database_connected,
+                    authenticated=authenticated,
                 ),
             )
 
@@ -1385,6 +1424,7 @@ async def test_agent(
                 connected=False,
                 url=data.url,
                 message=f"Authentication failed: {e!s}",
+                authenticated=False,
             ),
         )
     except AgentConnectionError as e:

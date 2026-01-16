@@ -77,6 +77,7 @@ export function SettingsPage() {
     message: string
     agent_version?: string
     database_connected?: boolean
+    authenticated?: boolean
   } | null>(null)
 
   const {
@@ -132,9 +133,12 @@ export function SettingsPage() {
         message: result.message,
         agent_version: result.agent_version,
         database_connected: result.database_connected,
+        authenticated: result.authenticated,
       })
-      if (result.connected) {
+      if (result.connected && result.authenticated) {
         toast.success('Agent Connection Successful', { description: result.message })
+      } else if (result.connected && !result.authenticated) {
+        toast.warning('Agent Reachable but Auth Failed', { description: result.message })
       } else {
         toast.error('Agent Connection Failed', { description: result.message })
       }
@@ -660,22 +664,44 @@ export function SettingsPage() {
               </div>
 
               {agentTestResult && (
-                <Alert variant={agentTestResult.connected ? 'default' : 'destructive'}>
-                  {agentTestResult.connected ? (
+                <Alert
+                  variant={
+                    agentTestResult.connected && agentTestResult.authenticated
+                      ? 'default'
+                      : 'destructive'
+                  }
+                >
+                  {agentTestResult.connected && agentTestResult.authenticated ? (
                     <CheckCircleIcon className="h-4 w-4" />
                   ) : (
                     <XCircleIcon className="h-4 w-4" />
                   )}
                   <AlertTitle>
-                    {agentTestResult.connected ? 'Connected' : 'Connection Failed'}
+                    {agentTestResult.connected && agentTestResult.authenticated
+                      ? 'Connected & Authenticated'
+                      : agentTestResult.connected && !agentTestResult.authenticated
+                        ? 'Reachable but Not Authenticated'
+                        : 'Connection Failed'}
                   </AlertTitle>
                   <AlertDescription>
                     {agentTestResult.message}
-                    {agentTestResult.agent_version && (
-                      <span className="mt-1 block text-xs">
-                        Agent version: {agentTestResult.agent_version}
-                      </span>
-                    )}
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      {agentTestResult.agent_version && (
+                        <Badge variant="outline">Version: {agentTestResult.agent_version}</Badge>
+                      )}
+                      {agentTestResult.connected && (
+                        <Badge variant={agentTestResult.authenticated ? 'default' : 'destructive'}>
+                          {agentTestResult.authenticated ? 'API Key Valid' : 'API Key Invalid'}
+                        </Badge>
+                      )}
+                      {agentTestResult.database_connected !== undefined && (
+                        <Badge
+                          variant={agentTestResult.database_connected ? 'default' : 'secondary'}
+                        >
+                          {agentTestResult.database_connected ? 'DB Connected' : 'DB Not Connected'}
+                        </Badge>
+                      )}
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}

@@ -373,6 +373,7 @@ export interface TestAgentResponse {
   message: string
   agent_version?: string
   database_connected?: boolean
+  authenticated?: boolean
 }
 
 export const testAgentApi = {
