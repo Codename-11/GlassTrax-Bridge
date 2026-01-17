@@ -18,6 +18,7 @@ from pystray import Icon, Menu, MenuItem
 
 from agent import __version__
 from agent.config import get_config, get_config_dir
+from agent.updater import UpdateChecker, ReleaseInfo
 
 
 def setup_logging() -> Path:
@@ -81,6 +82,15 @@ class AgentTray:
 
         # Load icons
         self._icons = self._load_icons()
+
+        # Initialize updater
+        self._updater = UpdateChecker(
+            on_update_available=self._on_update_available,
+            on_check_complete=self._on_update_check_complete,
+            on_download_complete=self._on_download_complete,
+            on_download_failed=self._on_download_failed,
+        )
+        self._update_available = False
 
     def _load_icons(self) -> dict:
         """Load tray icons from icons/ directory or generate defaults"""
@@ -169,6 +179,20 @@ class AgentTray:
                 f"DSN: {self._config.dsn}",
                 None,
                 enabled=False,
+            ),
+            Menu.SEPARATOR,
+            MenuItem(
+                lambda item: "Update Available!" if self._update_available else "Check for Updates",
+                self._check_for_updates,
+            ),
+            MenuItem(
+                "Download Update",
+                self._download_update,
+                visible=lambda item: self._update_available,
+            ),
+            MenuItem(
+                "View Release Notes",
+                self._view_release_notes,
             ),
             Menu.SEPARATOR,
             MenuItem("Regenerate API Key", self._regenerate_api_key),
@@ -352,6 +376,57 @@ class AgentTray:
             else:
                 webbrowser.open(f"file://{self._log_file}")
 
+    # --- Update Methods ---
+
+    def _check_for_updates(self, icon, item) -> None:
+        """Check for updates manually"""
+        self._logger.info("Manual update check requested")
+        self._updater.check_async()
+
+    def _download_update(self, icon, item) -> None:
+        """Download the available update"""
+        if self._update_available and self._updater.latest_release:
+            self._notify("Downloading Update",
+                        f"Downloading v{self._updater.latest_release.version}...")
+            self._updater.download_update()
+
+    def _view_release_notes(self, icon, item) -> None:
+        """Open GitHub releases page in browser"""
+        webbrowser.open(self._updater.get_releases_url())
+
+    def _on_update_available(self, release: ReleaseInfo) -> None:
+        """Callback when an update is available"""
+        self._update_available = True
+        if self._icon:
+            self._icon.update_menu()
+        self._notify(
+            "Update Available",
+            f"Version {release.version} is available (current: {__version__})"
+        )
+
+    def _on_update_check_complete(self, has_update: bool) -> None:
+        """Callback when update check completes"""
+        if self._icon:
+            self._icon.update_menu()
+
+    def _on_download_complete(self, installer_path) -> None:
+        """Callback when download completes"""
+        self._notify("Download Complete", "Click 'Download Update' to install, or run installer manually.")
+        self._logger.info(f"Update downloaded to: {installer_path}")
+
+        # Optionally auto-launch installer
+        if self._updater.install_update(installer_path):
+            self._logger.info("Installer launched, exiting agent...")
+            # Give installer time to start before we exit
+            import time
+            time.sleep(1)
+            self._exit(self._icon, None)
+
+    def _on_download_failed(self, error: str) -> None:
+        """Callback when download fails"""
+        self._notify("Download Failed", f"Error: {error}")
+        self._logger.error(f"Update download failed: {error}")
+
     def _exit(self, icon, item) -> None:
         """Exit the application"""
         self._logger.info("Exit requested, shutting down...")
@@ -389,6 +464,9 @@ class AgentTray:
                         self._notify("First Run - API Key Generated",
                                    "Check log file for your API key.")
                     self._first_run_key = None
+
+                # Schedule update check after 15 seconds
+                self._updater.check_async(delay=15)
 
             self._icon.run(setup=on_ready)
         else:

@@ -1450,8 +1450,8 @@ class GlassTraxService:
                 "d.shape_no",
                 "d.order_qty",
                 "d.overall_thickness",
-                "h.attached_file",
-                "d.attached_file",
+                "h.attached_file AS order_attached_file",
+                "d.attached_file AS line_attached_file",
                 "h.order_date",
                 "h.ship_date",
             ],
@@ -1511,13 +1511,13 @@ class GlassTraxService:
                     item[key] = item[key].strip() or None
 
             # Get attached file paths and strip whitespace
-            # h.attached_file -> order_attachment (order-level, typically PDF)
-            # d.attached_file -> line_attachment (line-level, typically DXF)
-            order_attachment = item.get("h.attached_file") or item.get("attached_file")
+            # order_attached_file -> order_attachment (order-level, typically PDF)
+            # line_attached_file -> line_attachment (line-level, typically DXF)
+            order_attachment = item.get("order_attached_file")
             if order_attachment and isinstance(order_attachment, str):
                 order_attachment = order_attachment.strip() or None
 
-            line_attachment = item.get("d.attached_file")
+            line_attachment = item.get("line_attached_file")
             if line_attachment and isinstance(line_attachment, str):
                 line_attachment = line_attachment.strip() or None
 
