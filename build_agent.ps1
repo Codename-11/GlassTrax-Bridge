@@ -298,20 +298,83 @@ Filename: "{app}\python\pythonw.exe"; Parameters: "-m agent.cli --tray"; Working
 Filename: "taskkill"; Parameters: "/F /IM pythonw.exe"; Flags: runhidden; RunOnceId: "StopAgent"
 
 [Code]
-// Stop agent before install/upgrade
+// Check if a process is running by name
+function IsProcessRunning(ProcessName: String): Boolean;
+var
+  WMIService: Variant;
+  ProcessList: Variant;
+begin
+  Result := False;
+  try
+    WMIService := CreateOleObject('WbemScripting.SWbemLocator');
+    WMIService := WMIService.ConnectServer('.', 'root\cimv2');
+    ProcessList := WMIService.ExecQuery('SELECT * FROM Win32_Process WHERE Name = ''' + ProcessName + '''');
+    Result := (ProcessList.Count > 0);
+  except
+    Result := False;
+  end;
+end;
+
+// Check if agent is running (pythonw.exe or python.exe with our path)
+function IsAgentRunning(): Boolean;
+begin
+  Result := IsProcessRunning('pythonw.exe') or IsProcessRunning('python.exe');
+end;
+
+// Stop agent before install/upgrade with user confirmation
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
 begin
-  // Try to gracefully stop any running agent
-  Exec('taskkill', '/F /IM pythonw.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Result := '';
+
+  // Check if agent is running
+  if IsAgentRunning() then
+  begin
+    if MsgBox('GlassTrax API Agent appears to be running.' + #13#10 + #13#10 +
+              'The installer needs to close the running instance to continue.' + #13#10 + #13#10 +
+              'Click OK to close the agent and continue installation.' + #13#10 +
+              'Click Cancel to abort installation.',
+              mbConfirmation, MB_OKCANCEL) = IDOK then
+    begin
+      // User confirmed, kill the processes
+      Exec('taskkill', '/F /IM pythonw.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Exec('taskkill', '/F /IM python.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      // Give it a moment to fully terminate
+      Sleep(500);
+    end
+    else
+    begin
+      // User cancelled
+      Result := 'Installation cancelled. Please close GlassTrax API Agent manually and try again.';
+    end;
+  end;
 end;
 
-// Check if agent is running and warn user
+// Check if agent is running before uninstall
 function InitializeUninstall(): Boolean;
+var
+  ResultCode: Integer;
 begin
   Result := True;
+
+  if IsAgentRunning() then
+  begin
+    if MsgBox('GlassTrax API Agent is currently running.' + #13#10 + #13#10 +
+              'The uninstaller will close the running instance to continue.' + #13#10 + #13#10 +
+              'Click OK to close the agent and continue.' + #13#10 +
+              'Click Cancel to abort uninstallation.',
+              mbConfirmation, MB_OKCANCEL) = IDOK then
+    begin
+      Exec('taskkill', '/F /IM pythonw.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Exec('taskkill', '/F /IM python.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Sleep(500);
+    end
+    else
+    begin
+      Result := False;
+    end;
+  end;
 end;
 
 // Optional cleanup of AppData folder after uninstall

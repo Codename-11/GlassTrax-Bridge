@@ -18,7 +18,16 @@ from pystray import Icon, Menu, MenuItem
 
 from agent import __version__
 from agent.config import get_config, get_config_dir
-from agent.updater import UpdateChecker, ReleaseInfo
+
+# Import updater with fallback if it fails
+try:
+    from agent.updater import UpdateChecker, ReleaseInfo
+    UPDATER_AVAILABLE = True
+except ImportError as e:
+    UPDATER_AVAILABLE = False
+    UpdateChecker = None
+    ReleaseInfo = None
+    # Will log this later when logger is available
 
 
 def setup_logging() -> Path:
@@ -83,14 +92,18 @@ class AgentTray:
         # Load icons
         self._icons = self._load_icons()
 
-        # Initialize updater
-        self._updater = UpdateChecker(
-            on_update_available=self._on_update_available,
-            on_check_complete=self._on_update_check_complete,
-            on_download_complete=self._on_download_complete,
-            on_download_failed=self._on_download_failed,
-        )
+        # Initialize updater (if available)
         self._update_available = False
+        if UPDATER_AVAILABLE:
+            self._updater = UpdateChecker(
+                on_update_available=self._on_update_available,
+                on_check_complete=self._on_update_check_complete,
+                on_download_complete=self._on_download_complete,
+                on_download_failed=self._on_download_failed,
+            )
+        else:
+            self._updater = None
+            self._logger.warning("Updater not available - update features disabled")
 
     def _load_icons(self) -> dict:
         """Load tray icons from icons/ directory or generate defaults"""
@@ -148,7 +161,7 @@ class AgentTray:
     def _create_menu(self) -> Menu:
         """Create the context menu with dynamic items"""
         # Use lambdas for dynamic text/enabled state (pystray requirement)
-        return Menu(
+        menu_items = [
             MenuItem(
                 lambda item: "Stop Agent" if self._state == self.STATE_RUNNING else "Start Agent",
                 self._toggle_agent,
@@ -180,26 +193,36 @@ class AgentTray:
                 None,
                 enabled=False,
             ),
-            Menu.SEPARATOR,
-            MenuItem(
-                lambda item: "Update Available!" if self._update_available else "Check for Updates",
-                self._check_for_updates,
-            ),
-            MenuItem(
-                "Download Update",
-                self._download_update,
-                visible=lambda item: self._update_available,
-            ),
-            MenuItem(
-                "View Release Notes",
-                self._view_release_notes,
-            ),
+        ]
+
+        # Add update menu items if updater is available
+        if UPDATER_AVAILABLE and self._updater:
+            menu_items.extend([
+                Menu.SEPARATOR,
+                MenuItem(
+                    lambda item: "Update Available!" if self._update_available else "Check for Updates",
+                    self._check_for_updates,
+                ),
+                MenuItem(
+                    "Download Update",
+                    self._download_update,
+                    visible=lambda item: self._update_available,
+                ),
+                MenuItem(
+                    "View Release Notes",
+                    self._view_release_notes,
+                ),
+            ])
+
+        menu_items.extend([
             Menu.SEPARATOR,
             MenuItem("Regenerate API Key", self._regenerate_api_key),
             MenuItem("Open Config Folder", self._open_config_folder),
             MenuItem("View Log File", self._open_log),
             MenuItem("Exit", self._exit),
-        )
+        ])
+
+        return Menu(*menu_items)
 
     def _toggle_agent(self, icon, item) -> None:
         """Start or stop the agent"""
@@ -342,8 +365,33 @@ class AgentTray:
         except Exception:
             return False
 
+    def _show_message_box(self, title: str, message: str, style: int = 0) -> int:
+        """Show a Windows message box. Returns button clicked (1=OK, 6=Yes, 7=No, 2=Cancel)"""
+        if sys.platform != "win32":
+            return 1  # Default to OK on non-Windows
+        try:
+            import ctypes
+            return ctypes.windll.user32.MessageBoxW(0, message, title, style)
+        except Exception:
+            return 1
+
     def _regenerate_api_key(self, icon, item) -> None:
-        """Regenerate the API key and copy to clipboard"""
+        """Regenerate the API key with confirmation and visual display"""
+        # Show warning dialog (MB_YESNO | MB_ICONWARNING = 0x04 | 0x30 = 0x34)
+        result = self._show_message_box(
+            "Regenerate API Key",
+            "Are you sure you want to regenerate the API key?\n\n"
+            "WARNING: The current key will be invalidated immediately.\n"
+            "Any systems using the old key will lose access.\n\n"
+            "Click Yes to generate a new key.\n"
+            "Click No to cancel.",
+            0x34  # MB_YESNO | MB_ICONWARNING
+        )
+
+        if result != 6:  # 6 = IDYES
+            self._logger.info("API key regeneration cancelled by user")
+            return
+
         try:
             new_key = self._config.regenerate_api_key()
             self._logger.info("-" * 40)
@@ -352,13 +400,27 @@ class AgentTray:
             self._logger.info("-" * 40)
 
             # Copy to clipboard
-            if self._copy_to_clipboard(new_key):
-                self._notify("API Key Regenerated", "New key copied to clipboard! (Also logged)")
-            else:
-                self._notify("API Key Regenerated", f"Key: {new_key[:20]}...")
+            copied = self._copy_to_clipboard(new_key)
+
+            # Show the new key in a dialog (MB_OK | MB_ICONINFORMATION = 0x00 | 0x40 = 0x40)
+            clipboard_msg = "\n\nKey copied to clipboard!" if copied else ""
+            self._show_message_box(
+                "New API Key Generated",
+                f"Your new API key:\n\n{new_key}\n\n"
+                f"Save this key securely - it won't be shown again.{clipboard_msg}\n\n"
+                f"The key is also saved to the log file.",
+                0x40  # MB_OK | MB_ICONINFORMATION
+            )
+
+            self._notify("API Key Regenerated", "New key generated and copied to clipboard")
+
         except Exception as e:
             self._logger.exception("Failed to regenerate API key")
-            self._notify("Error", f"Failed to regenerate key: {e}")
+            self._show_message_box(
+                "Error",
+                f"Failed to regenerate API key:\n\n{e}",
+                0x10  # MB_OK | MB_ICONERROR
+            )
 
     def _open_config_folder(self, icon, item) -> None:
         """Open the config folder in explorer"""
@@ -408,6 +470,9 @@ class AgentTray:
         """Callback when update check completes"""
         if self._icon:
             self._icon.update_menu()
+        # Show notification when up to date
+        if not has_update:
+            self._notify("Up to Date", f"You have the latest version (v{__version__})")
 
     def _on_download_complete(self, installer_path) -> None:
         """Callback when download completes"""
@@ -440,34 +505,60 @@ class AgentTray:
 
     def run(self, auto_start: bool = True) -> None:
         """Run the tray application"""
-        self._icon = Icon(
-            "GlassTrax API Agent",
-            self._icons[self.STATE_STOPPED],
-            "GlassTrax API Agent",
-            menu=self._create_menu(),
-        )
+        self._logger.info("Creating system tray icon...")
+
+        try:
+            menu = self._create_menu()
+            self._logger.info("Menu created successfully")
+        except Exception as e:
+            self._logger.exception(f"Failed to create menu: {e}")
+            raise
+
+        try:
+            self._icon = Icon(
+                "GlassTrax API Agent",
+                self._icons[self.STATE_STOPPED],
+                "GlassTrax API Agent",
+                menu=menu,
+            )
+            self._logger.info("Icon object created")
+        except Exception as e:
+            self._logger.exception(f"Failed to create icon: {e}")
+            raise
 
         if auto_start:
             # Schedule auto-start after icon is ready
             def on_ready(icon):
-                # Set to running icon BEFORE showing (so notification uses green icon)
-                icon.icon = self._icons[self.STATE_RUNNING]
-                icon.visible = True
-                self._start_agent()
+                try:
+                    self._logger.info("Tray icon ready, initializing...")
 
-                # Show first-run API key notification
-                if self._first_run_key:
-                    if self._copy_to_clipboard(self._first_run_key):
-                        self._notify("First Run - API Key Generated",
-                                   "Key copied to clipboard! Also saved to log file.")
-                    else:
-                        self._notify("First Run - API Key Generated",
-                                   "Check log file for your API key.")
-                    self._first_run_key = None
+                    # Set to running icon BEFORE showing (so notification uses green icon)
+                    icon.icon = self._icons[self.STATE_RUNNING]
+                    icon.visible = True
+                    self._start_agent()
 
-                # Schedule update check after 15 seconds
-                self._updater.check_async(delay=15)
+                    # Show first-run API key notification
+                    if self._first_run_key:
+                        if self._copy_to_clipboard(self._first_run_key):
+                            self._notify("First Run - API Key Generated",
+                                       "Key copied to clipboard! Also saved to log file.")
+                        else:
+                            self._notify("First Run - API Key Generated",
+                                       "Check log file for your API key.")
+                        self._first_run_key = None
 
+                    # Schedule update check after 15 seconds (if updater available)
+                    if self._updater:
+                        self._logger.info("Scheduling update check in 15 seconds")
+                        self._updater.check_async(delay=15)
+
+                except Exception as e:
+                    self._logger.exception(f"Error in on_ready callback: {e}")
+
+            self._logger.info("Starting icon.run() with auto_start...")
             self._icon.run(setup=on_ready)
+            self._logger.info("icon.run() returned")
         else:
+            self._logger.info("Starting icon.run() without auto_start...")
             self._icon.run()
+            self._logger.info("icon.run() returned")
