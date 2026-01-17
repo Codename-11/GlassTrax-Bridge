@@ -1451,6 +1451,7 @@ class GlassTraxService:
                 "d.order_qty",
                 "d.overall_thickness",
                 "h.attached_file",
+                "d.attached_file",
                 "h.order_date",
                 "h.ship_date",
             ],
@@ -1509,10 +1510,16 @@ class GlassTraxService:
                 if item.get(key) and isinstance(item[key], str):
                     item[key] = item[key].strip() or None
 
-            # Get attached file path and strip whitespace
-            attached_file = item.get("attached_file")
-            if attached_file and isinstance(attached_file, str):
-                attached_file = attached_file.strip() or None
+            # Get attached file paths and strip whitespace
+            # h.attached_file -> order_attachment (order-level, typically PDF)
+            # d.attached_file -> line_attachment (line-level, typically DXF)
+            order_attachment = item.get("h.attached_file") or item.get("attached_file")
+            if order_attachment and isinstance(order_attachment, str):
+                order_attachment = order_attachment.strip() or None
+
+            line_attachment = item.get("d.attached_file")
+            if line_attachment and isinstance(line_attachment, str):
+                line_attachment = line_attachment.strip() or None
 
             # Parse dates from query result
             order_date_val = parse_glasstrax_date(item.get("order_date"))
@@ -1533,7 +1540,8 @@ class GlassTraxService:
                 "thickness": item.get("overall_thickness"),
                 "order_date": order_date_val.isoformat() if order_date_val else None,
                 "ship_date": ship_date_val.isoformat() if ship_date_val else None,
-                "attached_file": attached_file,
+                "order_attachment": order_attachment,
+                "line_attachment": line_attachment,
             })
 
         # Get processing info for all lines in ONE batched query
@@ -1722,7 +1730,8 @@ class GlassTraxService:
                 d.shape_no,
                 d.order_qty,
                 d.overall_thickness,
-                h.attached_file,
+                h.attached_file AS order_attached_file,
+                d.attached_file AS line_attached_file,
                 h.order_date,
                 h.ship_date
             FROM sales_order_detail d
@@ -1768,10 +1777,16 @@ class GlassTraxService:
                 if item.get(key) and isinstance(item[key], str):
                     item[key] = item[key].strip() or None
 
-            # Get attached file path and strip whitespace
-            attached_file = item.get("attached_file")
-            if attached_file and isinstance(attached_file, str):
-                attached_file = attached_file.strip() or None
+            # Get attached file paths and strip whitespace
+            # order_attached_file -> order_attachment (order-level, typically PDF)
+            # line_attached_file -> line_attachment (line-level, typically DXF)
+            order_attachment = item.get("order_attached_file")
+            if order_attachment and isinstance(order_attachment, str):
+                order_attachment = order_attachment.strip() or None
+
+            line_attachment = item.get("line_attached_file")
+            if line_attachment and isinstance(line_attachment, str):
+                line_attachment = line_attachment.strip() or None
 
             # Parse dates from query result
             order_date_val = parse_glasstrax_date(item.get("order_date"))
@@ -1792,7 +1807,8 @@ class GlassTraxService:
                 "thickness": item.get("overall_thickness"),
                 "order_date": order_date_val.isoformat() if order_date_val else None,
                 "ship_date": ship_date_val.isoformat() if ship_date_val else None,
-                "attached_file": attached_file,
+                "order_attachment": order_attachment,
+                "line_attachment": line_attachment,
             })
 
         # Get processing info for all lines in ONE batched query
