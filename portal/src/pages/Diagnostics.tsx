@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { api, diagnosticsApi, getErrorMessage, type DiagnosticCheck } from '@/lib/api'
+import { api, diagnosticsApi, healthApi, getErrorMessage, type DiagnosticCheck } from '@/lib/api'
 import { StatusIndicator } from '@/components/ui/status-indicator'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,6 +32,12 @@ export function DiagnosticsPage() {
   const [showResetResult, setShowResetResult] = useState<string[] | null>(null)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
   const [isRestarting, setIsRestarting] = useState(false)
+
+  const { data: health } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => healthApi.get(),
+    refetchInterval: 30000,
+  })
 
   const {
     data: diagnostics,
@@ -132,7 +138,14 @@ export function DiagnosticsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">System Diagnostics</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">System Diagnostics</h1>
+            {health?.version && (
+              <Badge variant="secondary" className="text-xs">
+                v{health.version}
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">Check system health and connectivity status</p>
         </div>
         <Button onClick={() => refetch()} disabled={isFetching}>

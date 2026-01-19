@@ -219,7 +219,12 @@ export const apiKeysApi = {
 }
 
 export const accessLogsApi = {
-  list: (params?: { tenant_id?: number; api_key_id?: number; limit?: number }) =>
+  list: (params?: {
+    tenant_id?: number
+    api_key_id?: number
+    limit?: number
+    exclude_admin?: boolean
+  }) =>
     api.get<PaginatedResponse<AccessLog>>('/api/v1/admin/access-logs', { params }).then((r) => ({
       ...r,
       data: r.data.data,

@@ -10,6 +10,7 @@ import os
 import sys
 import threading
 import webbrowser
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 import uvicorn
@@ -21,9 +22,9 @@ from agent.config import get_config, get_config_dir
 
 # Import updater with fallback if it fails
 try:
-    from agent.updater import UpdateChecker, ReleaseInfo
+    from agent.updater import ReleaseInfo, UpdateChecker
     UPDATER_AVAILABLE = True
-except ImportError as e:
+except ImportError:
     UPDATER_AVAILABLE = False
     UpdateChecker = None
     ReleaseInfo = None
@@ -32,20 +33,33 @@ except ImportError as e:
 
 def setup_logging() -> Path:
     """
-    Configure logging to a persistent file with session separators.
+    Configure logging with daily rotation and configurable retention.
     Returns the log file path.
     """
     log_dir = get_config_dir()
     log_file = log_dir / "agent.log"
 
-    # Configure root logger (append mode - keep history)
+    # Get retention days from config (default 7)
+    config = get_config()
+    retention_days = config.log_retention_days
+
+    # Create rotating file handler - rotates at midnight daily
+    # backupCount = retention_days means keep that many old log files
+    handler = TimedRotatingFileHandler(
+        log_file,
+        when="midnight",
+        interval=1,
+        backupCount=retention_days,
+        encoding="utf-8",
+    )
+    handler.suffix = "%Y-%m-%d"  # Rotated files: agent.log.2026-01-18
+
+    # Configure root logger
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
         datefmt="%m/%d/%y - %I:%M %p",
-        handlers=[
-            logging.FileHandler(log_file, mode="a", encoding="utf-8"),
-        ],
+        handlers=[handler],
     )
 
     # Reduce noise from uvicorn access logs

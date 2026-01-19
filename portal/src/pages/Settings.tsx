@@ -7,6 +7,7 @@ import {
   dsnsApi,
   testDsnApi,
   testAgentApi,
+  healthApi,
   getErrorMessage,
   type ConfigData,
 } from '@/lib/api'
@@ -88,6 +89,12 @@ export function SettingsPage() {
     queryKey: ['config'],
     queryFn: () => configApi.get().then((r) => r.data),
     refetchOnWindowFocus: false,
+  })
+
+  const { data: health } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => healthApi.get(),
+    refetchInterval: 30000,
   })
 
   // Fetch available DSNs
@@ -418,6 +425,58 @@ export function SettingsPage() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* About Section */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <InfoIcon className="h-5 w-5" />
+                About
+              </CardTitle>
+              <CardDescription>System information and status</CardDescription>
+            </div>
+            {health?.version && (
+              <Badge variant="secondary" className="text-sm">
+                v{health.version}
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs">Version</span>
+              <div className="font-medium">{health?.version || 'Loading...'}</div>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs">Database</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${health?.glasstrax_connected ? 'bg-green-500' : 'bg-red-500'}`}
+                />
+                <span className="font-medium">{health?.database_name || 'Not configured'}</span>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs">Connection Mode</span>
+              <div className="font-medium">
+                {formData?.agent.enabled ? 'Remote Agent' : 'Direct ODBC'}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs">Status</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${health?.status === 'healthy' ? 'bg-green-500' : health?.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'}`}
+                />
+                <span className="font-medium capitalize">{health?.status || 'Unknown'}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Data Source Settings */}
       <Card>
@@ -1170,6 +1229,19 @@ function XCircleIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  )
+}
+
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
       />
     </svg>
   )

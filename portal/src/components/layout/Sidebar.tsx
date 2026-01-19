@@ -1,7 +1,9 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
+import { healthApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 
 const navigation = [
@@ -23,6 +25,13 @@ export function Sidebar() {
   const location = useLocation()
   const { logout, user } = useAuth()
   const { theme, setTheme, isDark } = useTheme()
+
+  const { data: health } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => healthApi.get(),
+    refetchInterval: 60000, // Refresh every minute
+    staleTime: 30000,
+  })
 
   const cycleTheme = () => {
     if (theme === 'light') setTheme('dark')
@@ -107,6 +116,9 @@ export function Sidebar() {
         <Button variant="outline" className="w-full" onClick={logout}>
           Sign out
         </Button>
+        {health?.version && (
+          <div className="text-muted-foreground mt-3 text-center text-xs">v{health.version}</div>
+        )}
       </div>
     </div>
   )

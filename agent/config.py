@@ -84,6 +84,7 @@ class AgentConfig:
                 "port": 8001,
                 "api_key_hash": "",
                 "test_query": "SELECT 1",  # Query to run for health checks
+                "log_retention_days": 7,  # Days to keep rotated log files
                 "allowed_tables": [
                     "customer",
                     "customer_contacts",
@@ -245,6 +246,11 @@ class AgentConfig:
     def test_query(self) -> str:
         """Get health check test query"""
         return self.get("agent.test_query", "SELECT 1")
+
+    @property
+    def log_retention_days(self) -> int:
+        """Get number of days to retain rotated log files"""
+        return self.get("agent.log_retention_days", 7)
 
 
 # Global config instance

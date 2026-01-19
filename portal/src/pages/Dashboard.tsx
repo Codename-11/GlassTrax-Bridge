@@ -30,19 +30,26 @@ export function DashboardPage() {
     queryFn: () => apiKeysApi.list().then((r) => r.data),
   })
 
+  // Fetch recent logs for display (shows all traffic including admin)
   const { data: recentLogsResponse } = useQuery({
     queryKey: ['recentLogs'],
     queryFn: () => accessLogsApi.list({ limit: 10 }),
   })
 
+  // Fetch stats with admin/health requests excluded for accurate client usage count
+  const { data: clientStatsResponse } = useQuery({
+    queryKey: ['clientStats'],
+    queryFn: () => accessLogsApi.list({ limit: 1, exclude_admin: true }),
+  })
+
   const recentLogs = recentLogsResponse?.data
-  const totalRequests = recentLogsResponse?.pagination?.total_items ?? 0
+  const totalClientRequests = clientStatsResponse?.pagination?.total_items ?? 0
 
   const stats = [
     { name: 'Applications', value: tenants?.length ?? 0 },
     { name: 'Active API Keys', value: apiKeys?.filter((k) => k.is_active).length ?? 0 },
     { name: 'Total API Keys', value: apiKeys?.length ?? 0 },
-    { name: 'Total Requests', value: totalRequests },
+    { name: 'Client Requests', value: totalClientRequests },
   ]
 
   const getTenantName = (tenantId: number | null) => {

@@ -542,6 +542,7 @@ async def list_access_logs(
     tenant_id: int | None = Query(None, description="Filter by tenant"),
     api_key_id: int | None = Query(None, description="Filter by API key"),
     limit: int | None = Query(None, description="Limit total results"),
+    exclude_admin: bool = Query(False, description="Exclude admin/portal requests from results"),
 ) -> PaginatedResponse[AccessLogResponse]:
     """List access logs"""
     query = db.query(AccessLog).order_by(AccessLog.created_at.desc())
@@ -550,6 +551,10 @@ async def list_access_logs(
         query = query.filter(AccessLog.tenant_id == tenant_id)
     if api_key_id:
         query = query.filter(AccessLog.api_key_id == api_key_id)
+    if exclude_admin:
+        # Exclude admin portal requests and health checks from stats
+        query = query.filter(~AccessLog.path.startswith("/api/v1/admin"))
+        query = query.filter(AccessLog.path != "/health")
 
     total = query.count()
 
