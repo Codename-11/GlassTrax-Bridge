@@ -82,10 +82,27 @@ class ApplicationConfig(BaseModel):
         return v
 
 
-class FeaturesConfig(BaseModel):
-    """Feature flags (NOT YET IMPLEMENTED - see TODO.md)"""
+class CachingConfig(BaseModel):
+    """Cache configuration for FAB order queries"""
 
-    enable_caching: bool = Field(default=False, description="NOT IMPLEMENTED: Query result caching")
+    fabs_ttl_minutes: int = Field(
+        default=30,
+        ge=1,
+        le=1440,
+        description="Time-to-live for FAB order cache in minutes",
+    )
+    max_cached_dates: int = Field(
+        default=7,
+        ge=1,
+        le=30,
+        description="Maximum number of dates to cache",
+    )
+
+
+class FeaturesConfig(BaseModel):
+    """Feature flags"""
+
+    enable_caching: bool = Field(default=True, description="Enable FAB order query caching")
     enable_exports: bool = Field(default=True, description="NOT IMPLEMENTED: Data export functionality")
 
 
@@ -132,6 +149,7 @@ class AppConfig(BaseModel):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     application: ApplicationConfig = Field(default_factory=ApplicationConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)
+    caching: CachingConfig = Field(default_factory=CachingConfig)
     admin: AdminConfig = Field(default_factory=AdminConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
 
@@ -226,6 +244,12 @@ class EditableFeaturesConfig(BaseModel):
     enable_exports: bool
 
 
+class EditableCachingConfig(BaseModel):
+    """Caching config for UI editing"""
+    fabs_ttl_minutes: int = Field(ge=1, le=1440)
+    max_cached_dates: int = Field(ge=1, le=30)
+
+
 class EditableAdminConfig(BaseModel):
     """Admin config for UI editing"""
     username: str = Field(min_length=1)
@@ -248,6 +272,7 @@ class EditableConfig(BaseModel):
     database: EditableDatabaseConfig
     application: EditableApplicationConfig
     features: EditableFeaturesConfig
+    caching: EditableCachingConfig
     admin: EditableAdminConfig
     agent: EditableAgentConfig
 

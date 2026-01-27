@@ -802,6 +802,92 @@ async def get_diagnostics(
 
 
 # ========================================
+# Speed Test / Latency Diagnostics
+# ========================================
+
+
+class SpeedTestResult(BaseModel):
+    """Speed test result with timing breakdown"""
+
+    timestamp: str
+    total_ms: float
+    health_check_ms: float
+    simple_query_ms: float | None = None
+    simple_query_error: str | None = None
+    mode: str  # 'direct' or 'agent'
+    database_name: str
+    glasstrax_connected: bool
+
+
+@router.post(
+    "/diagnostics/speedtest",
+    response_model=APIResponse[SpeedTestResult],
+    summary="Speed test",
+    description="Run a speed test measuring latency to GlassTrax database",
+)
+async def run_speedtest(
+    api_key: APIKeyInfo = Depends(get_api_key),
+    _: None = Depends(require_admin),
+) -> APIResponse[SpeedTestResult]:
+    """
+    Run a speed test to measure database query latency.
+
+    Measures:
+    - Health check time (Bridge internal)
+    - Simple query time (SELECT TOP 1 FROM customer)
+    """
+    import time as time_module
+    from datetime import datetime, timezone
+
+    from api.config import get_db_settings, load_yaml_config
+    from api.dependencies import get_glasstrax_service
+
+    # Get mode info
+    yaml_config = load_yaml_config()
+    agent_config = yaml_config.get("agent", {}) if yaml_config else {}
+    agent_enabled = agent_config.get("enabled", False)
+    mode = "agent" if agent_enabled else "direct"
+
+    db_settings = get_db_settings()
+    total_start = time_module.time()
+
+    # 1. Health check (internal connectivity test)
+    health_start = time_module.time()
+    service = next(get_glasstrax_service())
+    glasstrax_connected = await service.test_connection()
+    health_ms = (time_module.time() - health_start) * 1000
+
+    # 2. Simple query (actual database round-trip)
+    simple_query_ms = None
+    simple_query_error = None
+    if glasstrax_connected:
+        try:
+            query_start = time_module.time()
+            # Fetch just 1 customer record to measure query latency
+            _customers, _total = await service.get_customers(page=1, page_size=1)
+            simple_query_ms = (time_module.time() - query_start) * 1000
+        except Exception as e:
+            simple_query_error = str(e)
+
+    total_ms = (time_module.time() - total_start) * 1000
+
+    return APIResponse(
+        success=True,
+        message="Speed test completed",
+        data=SpeedTestResult(
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            total_ms=round(total_ms, 2),
+            health_check_ms=round(health_ms, 2),
+            simple_query_ms=round(simple_query_ms, 2) if simple_query_ms else None,
+            simple_query_error=simple_query_error,
+            mode=mode,
+            database_name=db_settings.friendly_name,
+            glasstrax_connected=glasstrax_connected,
+        ),
+    )
+
+
+# ========================================
 # Admin Authentication Endpoints
 # ========================================
 
@@ -1719,3 +1805,137 @@ async def update_config(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update configuration: {e!s}",
         )
+
+
+# ========================================
+# Cache Management Endpoints
+# ========================================
+
+
+class CacheStatusResponse(BaseModel):
+    """Cache status information"""
+    enabled: bool
+    entries: int
+    total_hits: int
+    total_misses: int
+    oldest_entry: str | None = None
+    newest_entry: str | None = None
+    cached_dates: list[str]
+    hit_rate: float | None = None  # Percentage
+
+
+class CacheInvalidateResponse(BaseModel):
+    """Response after cache invalidation"""
+    invalidated: bool
+    date: str | None = None
+    cleared_count: int | None = None
+    message: str
+
+
+@router.get(
+    "/cache/status",
+    response_model=APIResponse[CacheStatusResponse],
+    summary="Get cache status",
+    description="Get FAB order cache statistics and status",
+)
+async def get_cache_status(
+    api_key: APIKeyInfo = Depends(get_api_key),
+    _: None = Depends(require_admin),
+) -> APIResponse[CacheStatusResponse]:
+    """
+    Get current FAB order cache status.
+
+    Returns statistics including:
+    - Number of cached dates
+    - Total hits and misses
+    - Hit rate percentage
+    - List of cached dates
+    """
+    from api.services.cache_service import get_fab_cache
+
+    cache = get_fab_cache()
+    stats = cache.get_stats()
+
+    # Calculate hit rate
+    total_requests = stats.total_hits + stats.total_misses
+    hit_rate = (stats.total_hits / total_requests * 100) if total_requests > 0 else None
+
+    return APIResponse(
+        success=True,
+        data=CacheStatusResponse(
+            enabled=stats.enabled,
+            entries=stats.entries,
+            total_hits=stats.total_hits,
+            total_misses=stats.total_misses,
+            oldest_entry=stats.oldest_entry,
+            newest_entry=stats.newest_entry,
+            cached_dates=stats.cached_dates,
+            hit_rate=round(hit_rate, 1) if hit_rate is not None else None,
+        ),
+    )
+
+
+@router.delete(
+    "/cache/fabs/{date}",
+    response_model=APIResponse[CacheInvalidateResponse],
+    summary="Invalidate cache for date",
+    description="Clear cached FAB orders for a specific date",
+)
+async def invalidate_cache_date(
+    date: str,
+    api_key: APIKeyInfo = Depends(get_api_key),
+    _: None = Depends(require_admin),
+) -> APIResponse[CacheInvalidateResponse]:
+    """
+    Invalidate cached FAB orders for a specific date.
+
+    Args:
+        date: Date to invalidate (YYYY-MM-DD format)
+
+    Returns:
+        Whether the date was found and invalidated
+    """
+    from api.services.cache_service import get_fab_cache
+
+    cache = get_fab_cache()
+    invalidated = cache.invalidate(date)
+
+    return APIResponse(
+        success=True,
+        data=CacheInvalidateResponse(
+            invalidated=invalidated,
+            date=date,
+            message=f"Cache for {date} invalidated" if invalidated else f"No cache entry for {date}",
+        ),
+    )
+
+
+@router.delete(
+    "/cache/fabs",
+    response_model=APIResponse[CacheInvalidateResponse],
+    summary="Clear all FAB cache",
+    description="Clear all cached FAB orders",
+)
+async def clear_all_cache(
+    api_key: APIKeyInfo = Depends(get_api_key),
+    _: None = Depends(require_admin),
+) -> APIResponse[CacheInvalidateResponse]:
+    """
+    Clear all cached FAB orders.
+
+    This invalidates cache for all dates, forcing fresh queries
+    on the next request for each date.
+    """
+    from api.services.cache_service import get_fab_cache
+
+    cache = get_fab_cache()
+    count = cache.clear_all()
+
+    return APIResponse(
+        success=True,
+        data=CacheInvalidateResponse(
+            invalidated=count > 0,
+            cleared_count=count,
+            message=f"Cleared {count} cached date(s)" if count > 0 else "Cache was already empty",
+        ),
+    )

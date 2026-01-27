@@ -20,6 +20,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
+from api.config import load_yaml_config
 from api.dependencies import get_glasstrax_service
 from api.middleware import APIKeyInfo, get_api_key, require_orders_read
 from api.middleware.rate_limit import limiter
@@ -33,7 +34,18 @@ from api.schemas.order import (
     ProcessingDetail,
 )
 from api.schemas.responses import APIResponse, PaginatedResponse, PaginationMeta
+from api.services.cache_service import get_fab_cache
 from api.services.glasstrax import GlassTraxService
+
+
+def is_caching_enabled() -> bool:
+    """Check if FAB order caching is enabled in config"""
+    try:
+        config = load_yaml_config()
+        features = config.get("features", {}) if config else {}
+        return features.get("enable_caching", True)
+    except Exception:
+        return True  # Default to enabled
 
 router = APIRouter()
 
@@ -149,6 +161,7 @@ async def list_fab_orders(
     ship_date: date | None = Query(None, description="Ship date (YYYY-MM-DD)"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(100, ge=1, le=500, description="Items per page"),
+    bypass_cache: bool = Query(False, description="Bypass cache and fetch fresh data"),
 ) -> PaginatedResponse[FabOrderResponse]:
     """
     List fab orders for a specific date (for SilentFAB preprocessing).
@@ -160,8 +173,11 @@ async def list_fab_orders(
     - **ship_date**: Filter by ship date (YYYY-MM-DD) - use this for today's shipments
     - **page**: Page number (starts at 1)
     - **page_size**: Number of items per page (max 500)
+    - **bypass_cache**: Set to true to skip cache and fetch fresh data
 
     At least one of `date` or `ship_date` must be provided.
+
+    Results are cached for 30 minutes by default (configurable).
     """
     # Require at least one date filter
     if not order_date and not ship_date:
@@ -169,6 +185,41 @@ async def list_fab_orders(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one of 'date' or 'ship_date' must be provided",
         )
+
+    # Build cache key from date parameters
+    # Only cache when using order_date (the most common case for SilentFAB)
+    cache_key = None
+    use_cache = is_caching_enabled() and not bypass_cache and order_date and page == 1
+
+    if use_cache:
+        cache_key = order_date.isoformat()
+
+        # Try to get from cache first
+        cache = get_fab_cache()
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            # Cache hit - return cached response
+            # Apply pagination to cached data
+            total = len(cached_data)
+            start_idx = (page - 1) * page_size
+            end_idx = start_idx + page_size
+            page_data = cached_data[start_idx:end_idx]
+
+            orders = _convert_to_response_models(page_data)
+            total_pages = math.ceil(total / page_size) if total > 0 else 1
+
+            return PaginatedResponse(
+                success=True,
+                data=orders,
+                pagination=PaginationMeta(
+                    page=page,
+                    page_size=page_size,
+                    total_items=total,
+                    total_pages=total_pages,
+                    has_next=page < total_pages,
+                    has_previous=page > 1,
+                ),
+            )
 
     try:
         fab_orders, total = await service.get_fab_orders(
@@ -178,39 +229,13 @@ async def list_fab_orders(
             page_size=page_size,
         )
 
-        # Convert to response models
-        orders = []
-        for o in fab_orders:
-            fab_details = None
-            if o.get("fab_details"):
-                fab_details = [ProcessingDetail(**d) for d in o["fab_details"]]
-            edge_details = None
-            if o.get("edge_details"):
-                edge_details = [ProcessingDetail(**d) for d in o["edge_details"]]
+        # Cache the raw results if using cache and this is page 1
+        if use_cache and cache_key and page == 1:
+            cache = get_fab_cache()
+            cache.set(cache_key, fab_orders)
 
-            orders.append(
-                FabOrderResponse(
-                    fab_number=o.get("fab_number", ""),
-                    so_no=o.get("so_no"),
-                    line_no=o.get("line_no"),
-                    customer_name=o.get("customer_name"),
-                    customer_po=o.get("customer_po"),
-                    job_name=o.get("job_name"),
-                    item_description=o.get("item_description"),
-                    width=o.get("width"),
-                    height=o.get("height"),
-                    shape_no=o.get("shape_no"),
-                    quantity=o.get("quantity"),
-                    thickness=o.get("thickness"),
-                    order_date=o.get("order_date"),
-                    ship_date=o.get("ship_date"),
-                    order_attachment=o.get("order_attachment"),
-                    line_attachment=o.get("line_attachment"),
-                    edgework=o.get("edgework"),
-                    fab_details=fab_details,
-                    edge_details=edge_details,
-                )
-            )
+        # Convert to response models
+        orders = _convert_to_response_models(fab_orders)
 
         total_pages = math.ceil(total / page_size) if total > 0 else 1
 
@@ -231,6 +256,43 @@ async def list_fab_orders(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Database error: {e!s}",
         ) from e
+
+
+def _convert_to_response_models(fab_orders: list[dict]) -> list[FabOrderResponse]:
+    """Convert raw fab order dicts to response models"""
+    orders = []
+    for o in fab_orders:
+        fab_details = None
+        if o.get("fab_details"):
+            fab_details = [ProcessingDetail(**d) for d in o["fab_details"]]
+        edge_details = None
+        if o.get("edge_details"):
+            edge_details = [ProcessingDetail(**d) for d in o["edge_details"]]
+
+        orders.append(
+            FabOrderResponse(
+                fab_number=o.get("fab_number", ""),
+                so_no=o.get("so_no"),
+                line_no=o.get("line_no"),
+                customer_name=o.get("customer_name"),
+                customer_po=o.get("customer_po"),
+                job_name=o.get("job_name"),
+                item_description=o.get("item_description"),
+                width=o.get("width"),
+                height=o.get("height"),
+                shape_no=o.get("shape_no"),
+                quantity=o.get("quantity"),
+                thickness=o.get("thickness"),
+                order_date=o.get("order_date"),
+                ship_date=o.get("ship_date"),
+                order_attachment=o.get("order_attachment"),
+                line_attachment=o.get("line_attachment"),
+                edgework=o.get("edgework"),
+                fab_details=fab_details,
+                edge_details=edge_details,
+            )
+        )
+    return orders
 
 
 @router.get(

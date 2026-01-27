@@ -164,11 +164,15 @@ application:
     fetch_size: 1000         # Number of rows to fetch at once
 
 # Feature Flags
-# NOTE: Not yet implemented - these flags have no effect currently
-# See TODO.md for details
 features:
-  enable_caching: false      # NOT IMPLEMENTED - Query result caching
+  enable_caching: true       # Enable FAB order query caching
   enable_exports: true       # NOT IMPLEMENTED - Data export functionality
+
+# Caching Configuration
+# Controls FAB order (/orders/fabs) response caching
+caching:
+  fabs_ttl_minutes: 30       # How long to cache FAB order responses (default: 30 min)
+  max_cached_dates: 7        # Maximum number of dates to keep cached
 
 # Admin Portal Authentication
 # If not configured, defaults to admin/admin (change in production!)
