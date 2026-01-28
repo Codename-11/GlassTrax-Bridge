@@ -1,7 +1,17 @@
 import { useState } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { api, diagnosticsApi, healthApi, getErrorMessage, type DiagnosticCheck } from '@/lib/api'
+import {
+  api,
+  diagnosticsApi,
+  healthApi,
+  cacheApi,
+  speedTestApi,
+  configApi,
+  getErrorMessage,
+  type DiagnosticCheck,
+  type SpeedTestResult,
+} from '@/lib/api'
 import { StatusIndicator } from '@/components/ui/status-indicator'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,15 +38,30 @@ interface RestartResponse {
 }
 
 export function DiagnosticsPage() {
+  const queryClient = useQueryClient()
   const [confirmText, setConfirmText] = useState('')
   const [showResetResult, setShowResetResult] = useState<string[] | null>(null)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
   const [isRestarting, setIsRestarting] = useState(false)
+  const [speedTestResult, setSpeedTestResult] = useState<SpeedTestResult | null>(null)
 
   const { data: health } = useQuery({
     queryKey: ['health'],
     queryFn: () => healthApi.get(),
     refetchInterval: 30000,
+  })
+
+  const { data: config } = useQuery({
+    queryKey: ['config'],
+    queryFn: () => configApi.get().then((r) => r.data),
+    refetchOnWindowFocus: false,
+  })
+
+  const { data: cacheStatus, refetch: refetchCache } = useQuery({
+    queryKey: ['cacheStatus'],
+    queryFn: () => cacheApi.getStatus().then((r) => r.data),
+    refetchOnWindowFocus: false,
+    enabled: config?.features.enable_caching ?? false,
   })
 
   const {
@@ -69,6 +94,35 @@ export function DiagnosticsPage() {
       toast.error('Failed to reset database', {
         description: getErrorMessage(error),
       })
+    },
+  })
+
+  const speedTestMutation = useMutation({
+    mutationFn: () => speedTestApi.run().then((r) => r.data),
+    onSuccess: (data) => {
+      setSpeedTestResult(data)
+      if (data.error) {
+        toast.error('Speed test completed with errors', { description: data.error })
+      } else {
+        toast.success('Speed test completed', {
+          description: `Total: ${data.total_ms}ms`,
+        })
+      }
+    },
+    onError: (error) => {
+      toast.error('Speed test failed', { description: getErrorMessage(error) })
+    },
+  })
+
+  const clearCacheMutation = useMutation({
+    mutationFn: () => cacheApi.clearAll().then((r) => r.data),
+    onSuccess: (data) => {
+      toast.success('Cache cleared', { description: data.message })
+      refetchCache()
+      queryClient.invalidateQueries({ queryKey: ['cacheStatus'] })
+    },
+    onError: (error) => {
+      toast.error('Failed to clear cache', { description: getErrorMessage(error) })
     },
   })
 
@@ -189,6 +243,147 @@ export function DiagnosticsPage() {
               ))}
             </CardContent>
           </Card>
+
+          {/* Speed Test */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <BoltIcon className="h-5 w-5" />
+                    Speed Test
+                  </CardTitle>
+                  <CardDescription>Measure database query latency</CardDescription>
+                </div>
+                <Button
+                  onClick={() => speedTestMutation.mutate()}
+                  disabled={speedTestMutation.isPending}
+                >
+                  {speedTestMutation.isPending ? 'Running...' : 'Run Speed Test'}
+                </Button>
+              </div>
+            </CardHeader>
+            {speedTestResult && (
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-lg border p-3">
+                    <div className="text-muted-foreground text-xs">Health Check</div>
+                    <div className="text-2xl font-bold">{speedTestResult.health_check_ms}ms</div>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <div className="text-muted-foreground text-xs">Simple Query</div>
+                    <div className="text-2xl font-bold">
+                      {speedTestResult.simple_query_ms !== null
+                        ? `${speedTestResult.simple_query_ms}ms`
+                        : 'N/A'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <div className="text-muted-foreground text-xs">Total</div>
+                    <div className="text-2xl font-bold text-green-600">{speedTestResult.total_ms}ms</div>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                  <Badge variant="outline">Mode: {speedTestResult.mode}</Badge>
+                  <Badge variant={speedTestResult.glasstrax_connected ? 'default' : 'destructive'}>
+                    {speedTestResult.glasstrax_connected ? 'Connected' : 'Disconnected'}
+                  </Badge>
+                  {speedTestResult.error && (
+                    <Badge variant="destructive">{speedTestResult.error}</Badge>
+                  )}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* Cache Status */}
+          {config?.features.enable_caching && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <CacheIcon className="h-5 w-5" />
+                      Cache Status
+                    </CardTitle>
+                    <CardDescription>FAB order cache statistics</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => refetchCache()}>
+                      Refresh
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => clearCacheMutation.mutate()}
+                      disabled={clearCacheMutation.isPending || !cacheStatus?.cache.entries}
+                    >
+                      {clearCacheMutation.isPending ? 'Clearing...' : 'Clear Cache'}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {cacheStatus ? (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <div className="rounded-lg border p-3">
+                        <div className="text-muted-foreground text-xs">Cached Entries</div>
+                        <div className="text-2xl font-bold">{cacheStatus.cache.entries}</div>
+                        <div className="text-muted-foreground text-xs">
+                          max {cacheStatus.config.max_entries}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <div className="text-muted-foreground text-xs">TTL</div>
+                        <div className="text-2xl font-bold">{cacheStatus.config.ttl_minutes}</div>
+                        <div className="text-muted-foreground text-xs">minutes</div>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <div className="text-muted-foreground text-xs">Cache Hits</div>
+                        <div className="text-2xl font-bold text-green-600">
+                          {cacheStatus.cache.total_hits}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <div className="text-muted-foreground text-xs">Cache Misses</div>
+                        <div className="text-2xl font-bold text-amber-600">
+                          {cacheStatus.cache.total_misses}
+                        </div>
+                      </div>
+                    </div>
+                    {cacheStatus.cache.cached_dates.length > 0 && (
+                      <div className="mt-4">
+                        <div className="text-muted-foreground mb-2 text-xs">Cached Dates</div>
+                        <div className="flex flex-wrap gap-2">
+                          {cacheStatus.cache.cached_dates.map((date) => (
+                            <Badge key={date} variant="secondary">
+                              {date}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {cacheStatus.cache.total_hits + cacheStatus.cache.total_misses > 0 && (
+                      <div className="mt-4">
+                        <div className="text-muted-foreground text-xs">
+                          Hit Rate:{' '}
+                          {Math.round(
+                            (cacheStatus.cache.total_hits /
+                              (cacheStatus.cache.total_hits + cacheStatus.cache.total_misses)) *
+                              100
+                          )}
+                          %
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-muted-foreground text-sm">Loading cache status...</div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* System Info */}
           <Card>
@@ -478,6 +673,32 @@ function RefreshIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+      />
+    </svg>
+  )
+}
+
+function BoltIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M13 10V3L4 14h7v7l9-11h-7z"
+      />
+    </svg>
+  )
+}
+
+function CacheIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
       />
     </svg>
   )

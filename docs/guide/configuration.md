@@ -150,6 +150,40 @@ You can also configure these settings in the portal's Settings page under "Data 
 For detailed agent setup instructions, see [Agent Setup](/guide/agent-setup).
 :::
 
+## Feature Flags
+
+Enable or disable optional features:
+
+```yaml
+features:
+  enable_caching: true    # FAB order query caching
+  enable_exports: true    # Data export functionality (not implemented)
+```
+
+## Caching Settings
+
+When caching is enabled, FAB order queries are cached to improve performance:
+
+```yaml
+caching:
+  fabs_ttl_minutes: 30    # Cache time-to-live (1-1440 minutes)
+  max_cached_dates: 7     # Maximum dates to cache (1-30)
+```
+
+| Setting | Default | Range | Description |
+|---------|---------|-------|-------------|
+| `fabs_ttl_minutes` | 30 | 1-1440 | How long cached results remain valid |
+| `max_cached_dates` | 7 | 1-30 | Maximum number of dates to keep in cache (LRU eviction) |
+
+**Benefits of caching:**
+- Faster repeated queries for the same date
+- Reduced load on GlassTrax database
+- Request coalescing prevents thundering herd on cache miss
+
+::: tip
+View cache statistics and clear the cache on the **Diagnostics** page.
+:::
+
 ## Timezone
 
 Set your timezone in `config.yaml`:

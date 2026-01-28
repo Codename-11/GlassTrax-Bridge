@@ -180,6 +180,10 @@ class ConfigService:
                 "enable_caching": self.get("features.enable_caching", False),
                 "enable_exports": self.get("features.enable_exports", True),
             },
+            "caching": {
+                "fabs_ttl_minutes": self.get("caching.fabs_ttl_minutes", 30),
+                "max_cached_dates": self.get("caching.max_cached_dates", 7),
+            },
             "admin": {
                 "username": self.get("admin.username", "admin"),
                 # Note: password_hash is intentionally excluded

@@ -1622,6 +1622,7 @@ class ConfigResponse(BaseModel):
     database: dict
     application: dict
     features: dict
+    caching: dict
     admin: dict
     agent: dict
 
@@ -1631,6 +1632,7 @@ class ConfigUpdateRequest(BaseModel):
     database: dict | None = None
     application: dict | None = None
     features: dict | None = None
+    caching: dict | None = None
     admin: dict | None = None
     agent: dict | None = None
 

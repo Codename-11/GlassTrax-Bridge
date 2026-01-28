@@ -291,6 +291,10 @@ export interface ConfigData {
     enable_caching: boolean
     enable_exports: boolean
   }
+  caching: {
+    fabs_ttl_minutes: number
+    max_cached_dates: number
+  }
   admin: {
     username: string
   }
@@ -407,4 +411,66 @@ export const adminApi = {
         ...r,
         data: r.data.data,
       })),
+}
+
+// Cache types
+export interface CacheStats {
+  enabled: boolean
+  entries: number
+  total_hits: number
+  total_misses: number
+  oldest_entry: string | null
+  newest_entry: string | null
+  cached_dates: string[]
+}
+
+export interface CacheStatusResponse {
+  cache: CacheStats
+  config: {
+    ttl_minutes: number
+    max_entries: number
+  }
+}
+
+export interface CacheInvalidateResponse {
+  success: boolean
+  message: string
+  cleared_count?: number
+}
+
+export const cacheApi = {
+  getStatus: () =>
+    api.get<APIResponse<CacheStatusResponse>>('/api/v1/admin/cache/status').then((r) => ({
+      ...r,
+      data: r.data.data,
+    })),
+  invalidateDate: (date: string) =>
+    api.delete<APIResponse<CacheInvalidateResponse>>(`/api/v1/admin/cache/fabs/${date}`).then((r) => ({
+      ...r,
+      data: r.data.data,
+    })),
+  clearAll: () =>
+    api.delete<APIResponse<CacheInvalidateResponse>>('/api/v1/admin/cache/fabs').then((r) => ({
+      ...r,
+      data: r.data.data,
+    })),
+}
+
+// Speed test types
+export interface SpeedTestResult {
+  timestamp: string
+  health_check_ms: number
+  simple_query_ms: number | null
+  total_ms: number
+  mode: string
+  glasstrax_connected: boolean
+  error: string | null
+}
+
+export const speedTestApi = {
+  run: () =>
+    api.post<APIResponse<SpeedTestResult>>('/api/v1/admin/diagnostics/speedtest').then((r) => ({
+      ...r,
+      data: r.data.data,
+    })),
 }

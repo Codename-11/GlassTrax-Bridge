@@ -309,6 +309,17 @@ export function SettingsPage() {
     )
   }, [])
 
+  const updateCaching = useCallback((field: keyof ConfigData['caching'], value: number) => {
+    setFormData((prev) =>
+      prev
+        ? {
+            ...prev,
+            caching: { ...prev.caching, [field]: value },
+          }
+        : null
+    )
+  }, [])
+
   const updateAdmin = useCallback((field: keyof ConfigData['admin'], value: string) => {
     setFormData((prev) =>
       prev
@@ -992,6 +1003,63 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Caching Settings */}
+      {formData.features.enable_caching && formData.caching && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CacheIcon className="h-5 w-5" />
+              Caching Settings
+            </CardTitle>
+            <CardDescription>
+              Configure FAB order cache behavior. Cache improves query performance by storing recent results.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="fabs_ttl_minutes">Cache TTL (minutes)</Label>
+                <Input
+                  id="fabs_ttl_minutes"
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={formData.caching.fabs_ttl_minutes}
+                  onChange={(e) => updateCaching('fabs_ttl_minutes', parseInt(e.target.value) || 30)}
+                />
+                <p className="text-muted-foreground text-xs">
+                  How long cached results remain valid (1-1440 minutes)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="max_cached_dates">Max Cached Dates</Label>
+                <Input
+                  id="max_cached_dates"
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={formData.caching.max_cached_dates}
+                  onChange={(e) => updateCaching('max_cached_dates', parseInt(e.target.value) || 7)}
+                />
+                <p className="text-muted-foreground text-xs">
+                  Maximum number of dates to keep in cache (1-30)
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-3 text-sm">
+              <p className="text-muted-foreground">
+                <strong>Note:</strong> View cache status and run diagnostics on the{' '}
+                <a href="/diagnostics" className="text-primary hover:underline">
+                  Diagnostics page
+                </a>.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Admin Settings */}
       <Card>
         <CardHeader>
@@ -1242,6 +1310,19 @@ function InfoIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  )
+}
+
+function CacheIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
       />
     </svg>
   )

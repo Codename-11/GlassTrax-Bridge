@@ -85,20 +85,34 @@ Auto-refreshes every 5 seconds.
 Configure GlassTrax Bridge from the portal:
 
 - **Data Source** - Choose between Direct ODBC or Remote Agent mode, configure connection settings
-- **Admin credentials** - Change admin password
-- **Application settings** - Timezone and logging options
+- **Application Settings** - Timezone, logging, and performance options
+- **Feature Flags** - Enable/disable caching and exports
+- **Caching Settings** - Configure cache TTL and max entries (when caching enabled)
+- **Admin Settings** - Change admin password
 - **API Access** - View API base URL and documentation links
 
 ![Settings](/screenshots/glasstrax_bridge_settings_layout.png)
 
 ### Diagnostics
 
-System health monitoring:
+System health monitoring and performance tools:
 
+**Health Checks:**
 - Python environment check
 - ODBC driver detection
 - GlassTrax database connectivity
 - API endpoint testing
+
+**Speed Test:**
+- Measure database query latency
+- Shows health check and query times
+- Useful for diagnosing slow queries
+
+**Cache Status** (when caching enabled):
+- View cached entries and hit/miss statistics
+- See which dates are currently cached
+- Clear cache manually when needed
+- Monitor hit rate percentage
 
 **Server Controls:**
 - Restart Server button
