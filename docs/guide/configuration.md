@@ -162,23 +162,30 @@ features:
 
 ## Caching Settings
 
+::: warning Experimental
+Caching is experimental. Since this relates to order data, use conservative TTL values.
+:::
+
 When caching is enabled, FAB order queries are cached to improve performance:
 
 ```yaml
 caching:
-  fabs_ttl_minutes: 30    # Cache time-to-live (1-1440 minutes)
+  fabs_ttl_minutes: 5     # Cache time-to-live (1-1440 minutes)
   max_cached_dates: 7     # Maximum dates to cache (1-30)
 ```
 
 | Setting | Default | Range | Description |
 |---------|---------|-------|-------------|
-| `fabs_ttl_minutes` | 30 | 1-1440 | How long cached results remain valid |
+| `fabs_ttl_minutes` | 5 | 1-1440 | How long cached results remain valid |
 | `max_cached_dates` | 7 | 1-30 | Maximum number of dates to keep in cache (LRU eviction) |
 
 **Benefits of caching:**
 - Faster repeated queries for the same date
 - Reduced load on GlassTrax database
 - Request coalescing prevents thundering herd on cache miss
+
+**Bypassing cache:**
+Clients can request fresh data by adding `?bypass_cache=true` to their request.
 
 ::: tip
 View cache statistics and clear the cache on the **Diagnostics** page.

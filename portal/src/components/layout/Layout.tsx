@@ -1,9 +1,20 @@
+import { useState, useEffect } from 'react'
 import { Outlet, Navigate } from 'react-router-dom'
 import { useAuth } from '@/lib/auth'
 import { Sidebar } from './Sidebar'
 
+const SIDEBAR_COLLAPSED_KEY = 'gtb-sidebar-collapsed'
+
 export function Layout() {
   const { isAuthenticated, isLoading } = useAuth()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+    return stored === 'true'
+  })
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed))
+  }, [sidebarCollapsed])
 
   if (isLoading) {
     return (
@@ -19,7 +30,10 @@ export function Layout() {
 
   return (
     <div className="bg-background flex h-screen">
-      <Sidebar />
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
       <main className="flex-1 overflow-auto">
         <div className="container px-8 py-6">
           <Outlet />

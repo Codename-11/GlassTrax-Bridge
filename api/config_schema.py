@@ -83,10 +83,10 @@ class ApplicationConfig(BaseModel):
 
 
 class CachingConfig(BaseModel):
-    """Cache configuration for FAB order queries"""
+    """Cache configuration for FAB order queries (experimental)"""
 
     fabs_ttl_minutes: int = Field(
-        default=30,
+        default=5,
         ge=1,
         le=1440,
         description="Time-to-live for FAB order cache in minutes",

@@ -169,18 +169,46 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Create GitHub Release
+  # Stage 4: Check for release notes file (Claude-generated, committed to repo)
+  release-notes:
+    name: Check Release Notes
+    runs-on: ubuntu-latest
+    needs: validate
+    outputs:
+      has_notes: ${{ steps.check.outputs.has_notes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for RELEASE_NOTES.md
+        id: check
+        run: |
+          if [ -f "RELEASE_NOTES.md" ]; then
+            echo "Found RELEASE_NOTES.md"
+            echo "has_notes=true" >> $GITHUB_OUTPUT
+          else
+            echo "No RELEASE_NOTES.md found, will use GitHub auto-generated notes"
+            echo "has_notes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload release notes
+        if: steps.check.outputs.has_notes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: RELEASE_NOTES.md
+          retention-days: 7
+
+  # Stage 5: Create GitHub Release (after build completes)
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [validate, build-agent, build-docker]
+    needs: [validate, build-agent, build-docker, release-notes]
     permissions:
       contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Download installer artifact
         uses: actions/download-artifact@v4
@@ -188,81 +216,22 @@ jobs:
           name: agent-installer
           path: dist/
 
-      - name: Get previous tag
-        id: prev_tag
-        run: |
-          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p')
-          if [ -z "$PREV_TAG" ]; then
-            echo "No previous tag found, using first commit"
-            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
-          fi
-          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-          echo "Previous tag: $PREV_TAG"
-
-      - name: Generate release notes with Gemini
-        id: gemini
-        continue-on-error: true
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          if [ -z "$GEMINI_API_KEY" ]; then
-            echo "No Gemini API key, skipping AI release notes"
-            echo "gemini_success=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Get raw commits for Gemini
-          RAW_COMMITS=$(git log ${{ steps.prev_tag.outputs.prev_tag }}..HEAD --pretty=format:"%s" --no-merges)
-
-          # Get diff stats
-          DIFF_STATS=$(git diff --stat ${{ steps.prev_tag.outputs.prev_tag }}..HEAD | tail -1)
-
-          # Build prompt
-          PROMPT="Generate concise release notes for GlassTrax Bridge v${{ needs.validate.outputs.version }}.
-
-          GlassTrax Bridge is a multi-tenant REST API platform for read-only access to GlassTrax ERP (Pervasive SQL) with a React admin portal and Windows agent for ODBC connectivity.
-
-          Commits since last release (${{ steps.prev_tag.outputs.prev_tag }}):
-          $RAW_COMMITS
-
-          Changes: $DIFF_STATS
-
-          Format the release notes as markdown with these sections (omit empty sections):
-          - **New Features** - new functionality added
-          - **Improvements** - enhancements to existing features
-          - **Bug Fixes** - issues resolved
-          - **Documentation** - doc updates
-          - **Other Changes** - maintenance, refactoring, etc.
-
-          Keep descriptions brief and user-focused. Use bullet points. Do not include commit hashes."
-
-          # Call Gemini API
-          RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" \
-            -H 'Content-Type: application/json' \
-            -d "$(jq -n --arg prompt "$PROMPT" '{contents: [{parts: [{text: $prompt}]}]}')" 2>&1)
-
-          # Extract text from response
-          NOTES=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty' 2>/dev/null)
-
-          if [ -n "$NOTES" ] && [ "$NOTES" != "null" ]; then
-            echo "gemini_success=true" >> $GITHUB_OUTPUT
-            # Save to file to preserve formatting
-            echo "$NOTES" > release_notes.md
-            echo "Release notes generated successfully"
-          else
-            echo "gemini_success=false" >> $GITHUB_OUTPUT
-            echo "Failed to generate notes: $RESPONSE"
-          fi
+      - name: Download release notes
+        if: needs.release-notes.outputs.has_notes == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+          path: .
 
       - name: Build release body
-        id: body
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          HAS_NOTES: ${{ needs.release-notes.outputs.has_notes }}
+          REPO: ${{ github.repository }}
         run: |
-          VERSION="${{ needs.validate.outputs.version }}"
-          REPO="${{ github.repository }}"
-
-          # Start with AI notes if available
-          if [ "${{ steps.gemini.outputs.gemini_success }}" == "true" ] && [ -f release_notes.md ]; then
-            cat release_notes.md > body.md
+          # Start with Claude-generated notes if available (from RELEASE_NOTES.md)
+          if [ "$HAS_NOTES" == "true" ] && [ -f RELEASE_NOTES.md ]; then
+            cat RELEASE_NOTES.md > body.md
             echo "" >> body.md
             echo "---" >> body.md
             echo "" >> body.md
@@ -270,52 +239,48 @@ jobs:
 
           # Add download section
           cat >> body.md << EOF
-          ## Downloads
+## Downloads
 
-          ### Windows Agent Installer
-          Download \`GlassTraxAPIAgent-${VERSION}-Setup.exe\` below to install the GlassTrax API Agent on Windows.
+### Windows Agent Installer
+Download \`GlassTraxAPIAgent-${VERSION}-Setup.exe\` below to install the GlassTrax API Agent on Windows.
 
-          The agent provides ODBC access to GlassTrax for Docker deployments.
+The agent provides ODBC access to GlassTrax for Docker deployments.
 
-          ### Docker Image
-          \`\`\`bash
-          docker pull ghcr.io/${REPO}:${VERSION}
-          \`\`\`
+### Docker Image
+\`\`\`bash
+docker pull ghcr.io/${REPO}:${VERSION}
+\`\`\`
 
-          Or use the latest tag:
-          \`\`\`bash
-          docker pull ghcr.io/${REPO}:latest
-          \`\`\`
+Or use the latest tag:
+\`\`\`bash
+docker pull ghcr.io/${REPO}:latest
+\`\`\`
 
-          ## Installation
+## Installation
 
-          ### Agent (Windows)
-          1. Download and run the installer
-          2. Save the generated API key on first run
-          3. Configure \`agent_config.yaml\` with your DSN
+### Agent (Windows)
+1. Download and run the installer
+2. Save the generated API key on first run
+3. Configure \`agent_config.yaml\` with your DSN
 
-          ### Docker + Agent Mode
-          \`\`\`bash
-          AGENT_ENABLED=true \\
-          AGENT_URL=http://YOUR_WINDOWS_IP:8001 \\
-          AGENT_KEY=gta_your_key \\
-          docker-compose up -d
-          \`\`\`
+### Docker + Agent Mode
+\`\`\`bash
+AGENT_ENABLED=true \\
+AGENT_URL=http://YOUR_WINDOWS_IP:8001 \\
+AGENT_KEY=gta_your_key \\
+docker-compose up -d
+\`\`\`
 
-          ---
-          See [documentation](https://codename-11.github.io/GlassTrax-Bridge/) for full setup instructions.
-          EOF
-
-          # Remove leading whitespace from heredoc
-          sed -i 's/^          //' body.md
+---
+See [documentation](https://codename-11.github.io/GlassTrax-Bridge/) for full setup instructions.
+EOF
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: GlassTrax Bridge v${{ needs.validate.outputs.version }}
           draft: false
           prerelease: ${{ contains(github.ref, '-') }}
-          generate_release_notes: ${{ steps.gemini.outputs.gemini_success != 'true' }}
-          files: |
-            dist/*.exe
+          generate_release_notes: ${{ needs.release-notes.outputs.has_notes != 'true' }}
+          files: dist/*.exe
           body_path: body.md

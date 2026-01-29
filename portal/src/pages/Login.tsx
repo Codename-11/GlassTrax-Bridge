@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 export function LoginPage() {
   const navigate = useNavigate()
   const { login, isAuthenticated } = useAuth()
-  const [username, setUsername] = useState('admin')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -38,9 +38,14 @@ export function LoginPage() {
   return (
     <div className="bg-background flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">GlassTrax Bridge</CardTitle>
-          <CardDescription>Sign in to access the admin portal</CardDescription>
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center">
+            <img src="/logo.svg" alt="GlassTrax Bridge" className="h-16 w-auto" />
+          </div>
+          <div className="space-y-1 text-center">
+            <CardTitle className="text-2xl font-bold">GlassTrax Bridge</CardTitle>
+            <CardDescription>Sign in to access the admin portal</CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -55,7 +60,7 @@ export function LoginPage() {
               <Input
                 id="username"
                 type="text"
-                placeholder="admin"
+                placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -72,12 +77,6 @@ export function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              <p className="text-muted-foreground text-xs">
-                Default: <code className="bg-muted rounded px-1">admin</code> /{' '}
-                <code className="bg-muted rounded px-1">admin</code>
-                <br />
-                Or use an admin API key as the password.
-              </p>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

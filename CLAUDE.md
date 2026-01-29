@@ -24,16 +24,117 @@ Reference these docs for detailed information:
 
 **Always reference `GLASSTRAX-DATABASE.md` for actual Pervasive column names when writing queries.**
 
-## Versioning
+## Versioning & Releases
+
+### Semantic Versioning
+
+This project follows [Semantic Versioning](https://semver.org/) (SemVer):
+
+```
+MAJOR.MINOR.PATCH (e.g., 1.2.3)
+```
+
+| Change Type | When to Bump | Example |
+|-------------|--------------|---------|
+| **MAJOR** | Breaking changes to API, agent protocol, or major architecture changes | 1.0.0 → 2.0.0 |
+| **MINOR** | New features, non-breaking additions, significant enhancements | 1.0.0 → 1.1.0 |
+| **PATCH** | Bug fixes, small improvements, documentation updates | 1.0.0 → 1.0.1 |
 
 **Single source of truth:** `VERSION` file in project root
 
-```powershell
-# Update version
-echo "1.1.0" > VERSION
-cd portal && npm run sync-version
-cd ../docs && npm run sync-version
+### Conventional Commits
+
+All commits should follow [Conventional Commits](https://www.conventionalcommits.org/):
+
 ```
+<type>[optional scope]: <description>
+```
+
+**Types:**
+
+| Type | Description | Version Bump |
+|------|-------------|--------------|
+| `feat` | New feature | MINOR |
+| `fix` | Bug fix | PATCH |
+| `docs` | Documentation only | PATCH (if released) |
+| `style` | Formatting, no code change | None |
+| `refactor` | Code change that neither fixes nor adds | None |
+| `perf` | Performance improvement | PATCH |
+| `test` | Adding/updating tests | None |
+| `chore` | Build process, dependencies | None |
+| `ci` | CI/CD changes | None |
+
+**Breaking changes:** Add `!` after type or `BREAKING CHANGE:` in footer → MAJOR bump
+
+**Scope** (optional): `api`, `portal`, `agent`, `docs`, `ci`
+
+### Creating a Release
+
+```powershell
+# 1. Determine version bump based on commits since last release
+#    - Any breaking change (feat!, fix!, BREAKING CHANGE) → MAJOR
+#    - Any feat commit → MINOR
+#    - Only fix/docs/perf commits → PATCH
+
+# 2. Update VERSION file
+echo "1.1.0" > VERSION
+
+# 3. Sync version to Portal and Docs
+cd portal && npm run sync-version
+cd ../docs && npm run sync-version && cd ..
+
+# 4. Write release notes to RELEASE_NOTES.md (Claude generates these)
+# See "Release Notes Format" below
+
+# 5. Commit version bump and release notes
+git add VERSION portal/package.json docs/package.json RELEASE_NOTES.md
+git commit -m "chore(release): bump version to 1.1.0"
+
+# 6. Create and push tag
+git tag v1.1.0
+git push origin master --tags
+```
+
+The GitHub Actions release workflow will automatically:
+1. Validate VERSION matches tag
+2. Run all tests (API, Agent, Portal)
+3. Build Windows Agent installer + Docker image
+4. Use `RELEASE_NOTES.md` if present (falls back to GitHub auto-generate)
+5. Create GitHub release with artifacts attached
+
+### Release Notes Format
+
+Release notes are written by Claude and committed to `RELEASE_NOTES.md` before tagging.
+
+**Required format:**
+```markdown
+Brief 1-2 sentence summary of this release's focus.
+
+## What's Changed
+
+### Features
+- **Feature Name** - Brief description of the new functionality
+
+### Improvements
+- **Improvement Name** - Brief description of what was enhanced
+
+### Bug Fixes
+- **Fix Name** - Brief description of what was fixed
+
+### Documentation
+- Brief description of doc updates
+
+### Other Changes
+- Maintenance, refactoring, dependency updates
+```
+
+**Guidelines:**
+- Use **bold** for feature/fix names
+- Keep descriptions user-focused and concise (1 line each)
+- Omit sections with no items
+- Focus on what users will notice, not implementation details
+
+**Fallback:** If no RELEASE_NOTES.md, GitHub auto-generates notes from PR titles
 
 ## Quick Start
 

@@ -46,7 +46,23 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     - Client IP
     - Response status
     - Response time
+
+    Excludes internal/admin requests from database logging (still logs to file).
     """
+
+    # Paths to exclude from database logging (internal/admin operations)
+    EXCLUDE_FROM_DB = (
+        "/health",
+        "/api/v1/admin/",  # All admin endpoints (portal operations)
+        "/api/v1/auth/",   # Auth endpoints
+        "/docs",
+        "/openapi.json",
+        "/favicon.ico",
+    )
+
+    def _should_log_to_db(self, path: str) -> bool:
+        """Check if request should be logged to database (excludes internal requests)"""
+        return not any(path.startswith(prefix) for prefix in self.EXCLUDE_FROM_DB)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Generate request ID
@@ -103,17 +119,19 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = request_id
 
         # Save to database (non-blocking, separate session)
-        self._save_access_log(
-            request_id=request_id,
-            method=method,
-            path=path,
-            query_string=query if query else None,
-            status_code=status_code,
-            response_time_ms=response_time,
-            client_ip=client_ip,
-            user_agent=request.headers.get("User-Agent"),
-            request=request,
-        )
+        # Skip internal/admin requests - they clutter the logs meant for API clients
+        if self._should_log_to_db(path):
+            self._save_access_log(
+                request_id=request_id,
+                method=method,
+                path=path,
+                query_string=query if query else None,
+                status_code=status_code,
+                response_time_ms=response_time,
+                client_ip=client_ip,
+                user_agent=request.headers.get("User-Agent"),
+                request=request,
+            )
 
         return response
 

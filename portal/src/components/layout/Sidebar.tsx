@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
 import { healthApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
@@ -21,7 +22,12 @@ const navigation = [
   },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean
+  onToggle: () => void
+}
+
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation()
   const { logout, user } = useAuth()
   const { theme, setTheme, isDark } = useTheme()
@@ -40,87 +46,164 @@ export function Sidebar() {
   }
 
   return (
-    <div className="bg-card flex h-full w-64 flex-col border-r">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b px-4">
-        <img src="/favicon.svg" alt="GlassTrax Bridge" className="h-8 w-8" />
-        <span className="text-lg font-bold">GlassTrax Bridge</span>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {navigation.map((item) => {
-          const isActive = location.pathname === item.href
-
-          // External links open in new tab
-          if ('external' in item && item.external) {
-            return (
-              <a
-                key={item.name}
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-                <ExternalLinkIcon className="ml-auto h-3 w-3" />
-              </a>
-            )
-          }
-
-          return (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.name}
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* User section */}
-      <div className="border-t p-4">
-        <div className="mb-3 flex items-center gap-3">
-          <div className="bg-primary text-primary-foreground flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium">
-            {user?.username?.[0]?.toUpperCase() || 'A'}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{user?.username || 'Admin'}</p>
-            <p className="text-muted-foreground truncate text-xs">{user?.role || 'admin'}</p>
-          </div>
-        </div>
-        <div className="mb-2 flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={cycleTheme}
-            title={`Current: ${theme}`}
-          >
-            {isDark ? <MoonIcon className="mr-2 h-4 w-4" /> : <SunIcon className="mr-2 h-4 w-4" />}
-            {theme === 'system' ? 'Auto' : theme === 'dark' ? 'Dark' : 'Light'}
-          </Button>
-        </div>
-        <Button variant="outline" className="w-full" onClick={logout}>
-          Sign out
-        </Button>
-        {health?.version && (
-          <div className="text-muted-foreground mt-3 text-center text-xs">v{health.version}</div>
+    <TooltipProvider delayDuration={0}>
+      <div
+        className={cn(
+          'bg-card flex h-full flex-col border-r transition-all duration-300',
+          collapsed ? 'w-16' : 'w-64'
         )}
+      >
+        {/* Logo */}
+        <div className="flex h-16 items-center justify-between border-b px-3">
+          <div className={cn('flex items-center gap-3', collapsed && 'w-full justify-center')}>
+            <img src="/favicon.svg" alt="GlassTrax Bridge" className="h-8 w-8 flex-shrink-0" />
+            {!collapsed && <span className="text-lg font-bold">GlassTrax Bridge</span>}
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 px-3 py-2">
+          {navigation.map((item) => {
+            const isActive = location.pathname === item.href
+
+            // External links open in new tab
+            if ('external' in item && item.external) {
+              return (
+                <Tooltip key={item.name}>
+                  <TooltipTrigger asChild>
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                        collapsed && 'justify-center px-0'
+                      )}
+                    >
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {!collapsed && (
+                        <>
+                          {item.name}
+                          <ExternalLinkIcon className="ml-auto h-3 w-3" />
+                        </>
+                      )}
+                    </a>
+                  </TooltipTrigger>
+                  {collapsed && <TooltipContent side="right">{item.name}</TooltipContent>}
+                </Tooltip>
+              )
+            }
+
+            return (
+              <Tooltip key={item.name}>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={item.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                      collapsed && 'justify-center px-0'
+                    )}
+                  >
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    {!collapsed && item.name}
+                  </Link>
+                </TooltipTrigger>
+                {collapsed && <TooltipContent side="right">{item.name}</TooltipContent>}
+              </Tooltip>
+            )
+          })}
+        </nav>
+
+        {/* User section */}
+        <div className="border-t p-3">
+          {!collapsed ? (
+            <>
+              <div className="mb-3 flex items-center gap-3">
+                <div className="bg-primary text-primary-foreground flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-medium">
+                  {user?.username?.[0]?.toUpperCase() || 'A'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{user?.username || 'Admin'}</p>
+                  <p className="text-muted-foreground truncate text-xs">{user?.role || 'admin'}</p>
+                </div>
+              </div>
+              <div className="mb-2 flex gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={cycleTheme}>
+                      {isDark ? (
+                        <MoonIcon className="mr-2 h-4 w-4" />
+                      ) : (
+                        <SunIcon className="mr-2 h-4 w-4" />
+                      )}
+                      {theme === 'system' ? 'Auto' : theme === 'dark' ? 'Dark' : 'Light'}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Toggle theme</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={onToggle}>
+                      <CollapseIcon className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Collapse sidebar</TooltipContent>
+                </Tooltip>
+              </div>
+              <Button variant="outline" className="w-full" onClick={logout}>
+                Sign out
+              </Button>
+              {health?.version && (
+                <div className="text-muted-foreground mt-3 text-center text-xs">
+                  v{health.version}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="bg-primary text-primary-foreground flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium">
+                    {user?.username?.[0]?.toUpperCase() || 'A'}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">{user?.username || 'Admin'}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cycleTheme}>
+                    {isDark ? <MoonIcon className="h-4 w-4" /> : <SunIcon className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  Theme: {theme === 'system' ? 'Auto' : theme === 'dark' ? 'Dark' : 'Light'}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle}>
+                    <CollapseIcon className="h-4 w-4 rotate-180" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Expand sidebar</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={logout}>
+                    <LogoutIcon className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Sign out</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   )
 }
 
@@ -256,6 +339,32 @@ function ExternalLinkIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+      />
+    </svg>
+  )
+}
+
+function CollapseIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+      />
+    </svg>
+  )
+}
+
+function LogoutIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
       />
     </svg>
   )

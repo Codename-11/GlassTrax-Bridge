@@ -168,10 +168,10 @@ features:
   enable_caching: true       # Enable FAB order query caching
   enable_exports: true       # NOT IMPLEMENTED - Data export functionality
 
-# Caching Configuration
+# Caching Configuration (Experimental)
 # Controls FAB order (/orders/fabs) response caching
 caching:
-  fabs_ttl_minutes: 30       # How long to cache FAB order responses (default: 30 min)
+  fabs_ttl_minutes: 5        # How long to cache FAB order responses (default: 5 min)
   max_cached_dates: 7        # Maximum number of dates to keep cached
 
 # Admin Portal Authentication

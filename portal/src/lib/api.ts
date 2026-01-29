@@ -414,7 +414,7 @@ export const adminApi = {
 }
 
 // Cache types
-export interface CacheStats {
+export interface CacheStatusResponse {
   enabled: boolean
   entries: number
   total_hits: number
@@ -422,14 +422,7 @@ export interface CacheStats {
   oldest_entry: string | null
   newest_entry: string | null
   cached_dates: string[]
-}
-
-export interface CacheStatusResponse {
-  cache: CacheStats
-  config: {
-    ttl_minutes: number
-    max_entries: number
-  }
+  hit_rate: number | null
 }
 
 export interface CacheInvalidateResponse {
@@ -445,10 +438,12 @@ export const cacheApi = {
       data: r.data.data,
     })),
   invalidateDate: (date: string) =>
-    api.delete<APIResponse<CacheInvalidateResponse>>(`/api/v1/admin/cache/fabs/${date}`).then((r) => ({
-      ...r,
-      data: r.data.data,
-    })),
+    api
+      .delete<APIResponse<CacheInvalidateResponse>>(`/api/v1/admin/cache/fabs/${date}`)
+      .then((r) => ({
+        ...r,
+        data: r.data.data,
+      })),
   clearAll: () =>
     api.delete<APIResponse<CacheInvalidateResponse>>('/api/v1/admin/cache/fabs').then((r) => ({
       ...r,

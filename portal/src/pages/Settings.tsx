@@ -979,7 +979,12 @@ export function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Enable Caching</Label>
+              <Label className="flex items-center gap-2">
+                Enable Caching
+                <Badge variant="outline" className="border-amber-600 text-xs text-amber-600">
+                  Experimental
+                </Badge>
+              </Label>
               <p className="text-muted-foreground text-xs">
                 Cache query results for improved performance
               </p>
@@ -1010,9 +1015,14 @@ export function SettingsPage() {
             <CardTitle className="flex items-center gap-2">
               <CacheIcon className="h-5 w-5" />
               Caching Settings
+              <Badge variant="outline" className="border-amber-600 text-xs text-amber-600">
+                Experimental
+              </Badge>
             </CardTitle>
             <CardDescription>
-              Configure FAB order cache behavior. Cache improves query performance by storing recent results.
+              Configure FAB order cache behavior. Cache improves query performance by storing recent
+              results. Clients can bypass cache with{' '}
+              <code className="bg-muted rounded px-1">?bypass_cache=true</code>.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1025,7 +1035,7 @@ export function SettingsPage() {
                   min={1}
                   max={1440}
                   value={formData.caching.fabs_ttl_minutes}
-                  onChange={(e) => updateCaching('fabs_ttl_minutes', parseInt(e.target.value) || 30)}
+                  onChange={(e) => updateCaching('fabs_ttl_minutes', parseInt(e.target.value) || 5)}
                 />
                 <p className="text-muted-foreground text-xs">
                   How long cached results remain valid (1-1440 minutes)
@@ -1053,7 +1063,8 @@ export function SettingsPage() {
                 <strong>Note:</strong> View cache status and run diagnostics on the{' '}
                 <a href="/diagnostics" className="text-primary hover:underline">
                   Diagnostics page
-                </a>.
+                </a>
+                .
               </p>
             </div>
           </CardContent>
