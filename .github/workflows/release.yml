@@ -238,42 +238,47 @@ jobs:
           fi
 
           # Add download section
-          cat >> body.md << EOF
-## Downloads
+          cat >> body.md << 'BODY'
+          ## Downloads
 
-### Windows Agent Installer
-Download \`GlassTraxAPIAgent-${VERSION}-Setup.exe\` below to install the GlassTrax API Agent on Windows.
+          ### Windows Agent Installer
+          Download `GlassTraxAPIAgent-${VERSION}-Setup.exe` below to install the GlassTrax API Agent on Windows.
 
-The agent provides ODBC access to GlassTrax for Docker deployments.
+          The agent provides ODBC access to GlassTrax for Docker deployments.
 
-### Docker Image
-\`\`\`bash
-docker pull ghcr.io/${REPO}:${VERSION}
-\`\`\`
+          ### Docker Image
+          ```bash
+          docker pull ghcr.io/${REPO}:${VERSION}
+          ```
 
-Or use the latest tag:
-\`\`\`bash
-docker pull ghcr.io/${REPO}:latest
-\`\`\`
+          Or use the latest tag:
+          ```bash
+          docker pull ghcr.io/${REPO}:latest
+          ```
 
-## Installation
+          ## Installation
 
-### Agent (Windows)
-1. Download and run the installer
-2. Save the generated API key on first run
-3. Configure \`agent_config.yaml\` with your DSN
+          ### Agent (Windows)
+          1. Download and run the installer
+          2. Save the generated API key on first run
+          3. Configure `agent_config.yaml` with your DSN
 
-### Docker + Agent Mode
-\`\`\`bash
-AGENT_ENABLED=true \\
-AGENT_URL=http://YOUR_WINDOWS_IP:8001 \\
-AGENT_KEY=gta_your_key \\
-docker-compose up -d
-\`\`\`
+          ### Docker + Agent Mode
+          ```bash
+          AGENT_ENABLED=true \
+          AGENT_URL=http://YOUR_WINDOWS_IP:8001 \
+          AGENT_KEY=gta_your_key \
+          docker-compose up -d
+          ```
 
----
-See [documentation](https://codename-11.github.io/GlassTrax-Bridge/) for full setup instructions.
-EOF
+          ---
+          See [documentation](https://codename-11.github.io/GlassTrax-Bridge/) for full setup instructions.
+          BODY
+
+          # Remove leading whitespace and expand variables
+          sed -i 's/^          //' body.md
+          sed -i "s/\${VERSION}/${VERSION}/g" body.md
+          sed -i "s/\${REPO}/${REPO}/g" body.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
