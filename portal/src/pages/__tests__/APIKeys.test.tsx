@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { renderAuthenticated, screen, waitFor } from '@/__tests__/test-utils'
-import { ApiKeysPage } from '../ApiKeys'
+import { ApiKeysPage } from '../APIKeys'
 
 describe('ApiKeys', () => {
   it('renders without crashing', async () => {
